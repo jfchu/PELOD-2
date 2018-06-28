@@ -221,19 +221,27 @@ FindExtremeValue <- function(id, frame) {
   initial.index = 0
   final.index = 0
   for (i in seq_len(nrow(frame))) {
-    if ((frame$encid)[i] == id && !found.initial)
+    if ((frame$encid)[i] == id && !found.initial) {
       initial.index = i
-    else if ((frame$encid)[i] == id && found.initial)
-      final.index = i
-  }
-    
-  if (event == "Peds Coma Score" || event == "Pupil Left Reaction" || event == "Pupil Right Reaction" || event == "Arterial Mean Pressure" || event == "PaO2" || event == "WBC" || event == "Platelets") {
-    extremum = (frame$ #extracting with variable name instead of column name?
-    for (i in initial.index:final.index) {
-      
+      found.initial = T
+    } else if ((frame$encid)[i] != id && found.initial) {
+      final.index = i - 1
+      break
     }
   }
-    
+  extremum = as.numeric((frame$Clinical.Event.Result)[initial.index])
+  if (event == "Peds Coma Score" || event == "Arterial Mean Pressure" || event == "PaO2" || event == "WBC" || event == "Platelets") {
+    for (i in (initial.index + 1):final.index) {
+      if (as.numeric((frame$Clinical.Event.Result)[i]) < extremum)
+        extremum = as.numeric((frame$Clinical.Event.Result)[i])
+    }
+  } else if (event == "Lactate" || event == "Cr" || event == "PaCO2") {
+    for (i in (initial.index + 1):final.index) {
+      if (as.numeric((frame$Clinical.Event.Result)[i]) > extremum)
+        extremum = as.numeric((frame$Clinical.Event.Result)[i])
+    }
+  }
+  return (extremum) 
 }
 
 #Creating data frame to test algorithm
@@ -276,6 +284,5 @@ FindExtremeValue <- function(id, frame) {
 #File names:
 #admit1picu_deid_unencrypt.xlsx
 #PELOD2_2015-2016_deid_unencrypt.xlsx
-pelod2.data <- read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", 14)
-pelod2.data2 <- read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", 15)
-print(pelod2.data$Clinical.Event)
+pelod2.data <- read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", 8)
+FindExtremeValue(118, pelod2.data)
