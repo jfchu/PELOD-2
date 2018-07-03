@@ -20,16 +20,16 @@ GComa <- function(score) {
 
 #Pupil reactivity should be entered as follows: 1 if true or 0 if false
 #True
-Pupillary <- function(reactive) {
+Pupillary <- function(left.reactive, right.reactive) {
   cutoffs <- list(c(0, 5))
-  if (reactive <= cutoffs[[1]][1])
+  if (left.reactive <= cutoffs[[1]][1] && right.reactive <= cutoffs[[1]][1])
     return (cutoffs[[1]][2])
   return (0)
 }
 
 #Molarity measured in mmol/L
 #False
-Lactatemia <- function(lac.molarity) {
+Lactatemia <- function(lac.molarity, lac.wholeblood.molarity) {
   cutoffs <- list(c(11.0, 4), c(5.0, 1))
   for (i in seq_len(length(cutoffs))) {
     if (lac.molarity >= cutoffs[[i]][1])
@@ -80,9 +80,9 @@ Creatinine <- function(age, cr.molarity) {
 #PaO2 -> partial pressure arterial oxygen
 #FIO2 -> fraction of inspired oxygen
 #True
-Carrico <- function(index) {
+Carrico <- function(pao2, fio2) {
   cutoffs <- list(c(60, 2))
-  if (index <= cutoffs[[1]][1])
+  if (pao2 / fio2 <= cutoffs[[1]][1])
     return (cutoffs[[1]][2])
   return (0) 
 }
@@ -186,7 +186,7 @@ CardioPELOD2Frame <- function(frame) {
 #Precondition: frame contains at least 1 row
 RenalPELOD2Frame <- function(frame) {
   frame <- cbind(frame, pelod2.months = as.numeric(pelod2.data$pelod2.age) / 365 * 12)
-  pelod2.renalscore <- c(RenalPELOD2(frame[1, 13], frame[1, 7]))
+  pelod2.renalscore <- c(RenalPELOD2(as.numeric((frame$pelod2.months)[1]), frame[1, 7]))
   for (i in seq_len(nrow(frame))[-1]) {
     pelod2.renalscore <- c(pelod2.renalscore, c(RenalPELOD2(frame[i, 13], frame[i, 5], frame[i, 6])))
   }
@@ -215,74 +215,72 @@ ProbMortality <- function(pelod2) {
   return (1 / (1 + exp(6.61 - 0.47 * pelod2)))
 }
 
-FindExtremeValue <- function(id, frame) {
-  event = (frame$Clinical.Event)[1]
-  found.initial = F
-  initial.index = 0
-  final.index = 0
-  for (i in seq_len(nrow(frame))) {
-    if ((frame$encid)[i] == id && !found.initial) {
-      initial.index = i
-      found.initial = T
-    } else if ((frame$encid)[i] != id && found.initial) {
-      final.index = i - 1
-      break
-    }
-  }
-  extremum = as.numeric((frame$Clinical.Event.Result)[initial.index])
-  if (event == "Peds Coma Score" || event == "Arterial Mean Pressure" || event == "PaO2" || event == "WBC" || event == "Platelets") {
-    for (i in (initial.index + 1):final.index) {
-      if (as.numeric((frame$Clinical.Event.Result)[i]) < extremum)
-        extremum = as.numeric((frame$Clinical.Event.Result)[i])
-    }
-  } else if (event == "Lactate" || event == "Cr" || event == "PaCO2") {
-    for (i in (initial.index + 1):final.index) {
-      if (as.numeric((frame$Clinical.Event.Result)[i]) > extremum)
-        extremum = as.numeric((frame$Clinical.Event.Result)[i])
-    }
-  }
-  return (extremum) 
+FindExtremeValueMax <- function(id, frame) {
+  vals <- frame[frame$encid == id, "Clinical.Event.Result"]
+  return (max(vals, na.rm = T))
 }
 
-#Creating data frame to test algorithm
-#pelod2.age measured in days
-#pelod2.data <- data.frame( 
-#  pelod2.id = c(1:10),
-#  pelod2.age = c(seq(from = 10, to = 2710, length.out = 10)),
-#  pelod2.gcoma = c(seq(from = 3, to = 12, length.out = 10)),
-#  pelod2.pup = rep(c(1, 0), 5),
-#  pelod2.lac = c(seq(from = 3.0, to = 16.5, length.out = 10)),
-#  pelod2.map = c(seq(from = 15, to = 105, length.out = 10)),
-#  pelod2.cr = c(seq(from = 20, to = 110, length.out = 10)),
-#  pelod2.carrico = c(seq(from = 30, to = 75, length.out = 10)),
-#  pelod2.paco2 = c(seq(from = 40, to = 130, length.out = 10)),
-#  pelod2.vent = rep(c(1, 0), 5), 
-#  pelod2.wbc = c(seq(from = 1, to = 2.8, length.out = 10)),
-#  pelod2.plate = c(seq(from = 60, to = 150, length.out = 10))
-#) 
+FindExtremeValueMin <- function(id, frame) {
+  vals <- frame[frame$encid == id, "Clinical.Event.Result"]
+  return (min(vals, na.rm = T))
+}
 
-#set.seed(100)
-#pelod2.data <- data.frame(
-#  pelod2.id = c(1:5000),
-#  pelod2.age = rnorm(5000, 1200, 15),
-#  pelod2.gcoma = rnorm(5000, 7, 1),
-#  pelod2.pup = rbinom(5000, 1, 0.8),
-#  pelod2.lac = rnorm(5000, 8, 1),
-#  pelod2.map = rnorm(5000, 40, 7),
-#  pelod2.cr = rnorm(5000, 80, 4),
-#  pelod2.carrico = rnorm(5000, 60, 6),
-#  pelod2.paco2 = rnorm(5000, 76, 8),
-#  pelod2.vent = rbinom(5000, 1, 0.3),
-#  pelod2.wbc = rnorm(5000, 1.6, 0.3),
-#  pelod2.plate = rnorm(5000, 110, 11)
-#) 
+FindExtremeValuePupil <- function(id, frame) {
+  vals <- frame[frame$encid == id, "Clinical.Event.Result"]
+  return (min(sapply(vals, function(X) {if (X == "Nonreactive") return (0) return (1)}), na.rm = T))
+}
 
-#HolisticPELOD2Frame(pelod2.data)
-#NeuroPELOD2Frame(pelod2.data)
-#ProbMortality(HolisticPELOD2Frame(pelod2.data)$pelod2.score)
+FindExtremeValueVent <- function(id, frame) {
+  vals <- frame[frame$encid == id, "Clinical.Event.Result"]
+  return (max(sapply(vals, function(Y) {if (is.character(Y)) return (1) return (0)}), na.rm = T))
+}
+
+PELOD2Scores <- function(frame.list) {
+  frame <- data.frame(
+    pelod2.id = read.xlsx("PELOD2_calculator_deid_unencrypt.xlsx")$encid,
+    pelod2.age = AgeMonths(PELOD2Ages(read.xlsx("admit1picu_deid_unencrypt.xlsx"))),
+    pelod2.gcs = GComa(sapply(id, FindExtremeValueMin, frame = frame.list["GCS"])),
+    pelod2.pup = Pupillary(sapply(id, FindExtremeValuePupil, frame = frame.list["pup.left"]), sapply(id, FindExtremeValuePupil, frame = frame.list["pup.right"])),
+    pelod2.lac = Lactatemia(age, sapply(id, FindExtremeValueMax, frame = frame.list["lac"]), sapply(id, FindExtremeValueMax, frame = frame.list["lac.wholeblood"])),
+    pelod2.map = MAP(age, sapply(id, FindExtremeValueMin, frame = frame.list["map"])), 
+    pelod2.cr = Creatinine(age, sapply(id, FindExtremeValueMin, frame = frame.list["cr"])),
+    pelod2.carrico = Carrico(sapply(id, FindExtremeValueMax, frame = frame.list["pao2"]), sapply(id, FindExtremeValueMin, frame = frame.list["fio2"])),
+    pelod2.paco2 = PaCO2(sapply(id, FindExtremeValueMax, frame = frame.list["paco2"])),
+    pelod2.vent = Ventilation(sapply(id, FindExtremeValueVent, frame = frame.list["vent"])),
+    pelod2.wbc = WBC(sapply(id, FindExtremeValueMin, frame = frame.list["wbc"])),
+    pelod2.plate = Platelet(sapply(id, FindExtremeValueMin, frame = frame.list["plate"])),
+    pelod2.scores = pelod2.gcs + pelod2.pup + pelod2.lac + pelod2.map + pelod2.cr + pelod2.carrico + pelod2.paco2 + pelod2.vent
+  ) 
+}
+
+PELOD2Ages <- function(frame) {
+  return (frame$AGEYRS * 365.25 + frame$AGEDAYS)
+}
 
 #File names:
 #admit1picu_deid_unencrypt.xlsx
 #PELOD2_2015-2016_deid_unencrypt.xlsx
-pelod2.data <- read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", 8)
-FindExtremeValue(118, pelod2.data)
+pelod2.datalist <- list(
+  GCS = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "GCS"),
+  pup.left = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Pupilary Reaction Left"),
+  pup.right = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Pupilary Reaction Right"),
+  lac = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Lactate"),
+  lac.wholeblood = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Lactate Whole Blood"),
+  map = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Mean Arterial Pressure"),
+  cr = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Creatine"),
+  pao2 = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "PaO2 Verified Date"),
+  fio2 = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "FiO2 Verified Date"),
+  paco2 = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "PaCo2"),
+  vent = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Mechanical Vent"),
+  wbc = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "WBC"),
+  plate = read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Platelets")
+)
+#for (i in 1:13) 
+#  pelod2.datalist[[i]][["Clinical.Event.Performed.Date/Time"]] <- convertToDateTime(pelod2.datalist[[i]][["Clinical.Event.Performed.Date/Time"]])
+
+#pelod2.datalist[[1]][["Clinical.Event.Performed.Date/Time"]] <- convertToDateTime(pelod2.datalist[[1]][["Clinical.Event.Performed.Date/Time"]])
+#print (pelod2.datalist[[1]]["Clinical.Event.Performed.Date/Time"])
+
+#To-do:
+#finish implement changes detailed in pelod2_calc_revised
+#validate data in pelod2 calculator file
