@@ -19,11 +19,11 @@ FindAgeCutoffs <- function(X, age) {
 #Fix score calculation; eg. encid 7 has incorrect score
 GComa <- function(id) {
   cutoffs <- list(c(4, 4), c(10, 1))
-  min.val <- as.numeric(FindExtremeValueMin(id, pelod2.datalist[["GCS"]]))
+  min.val <- FindExtremeValueMin(id, pelod2.datalist[["GCS"]])
   FindCutoffs <- function(X, score) {
-    if (is.na(score))
+    if (is.na(score)) {
       return (NA)
-    else if (score <= cutoffs[[1]][1]) {
+    }else if (score <= cutoffs[[1]][1]) {
       return (cutoffs[[X]][2])
     }
     return (0)
@@ -35,8 +35,8 @@ GComa <- function(id) {
 #True
 Pupillary <- function(id) {
   cutoffs <- list(c(0, 5))
-  min.val1 <- as.numeric(FindExtremeValuePupil(id, pelod2.datalist[["pup.left"]]))
-  min.val2 <- as.numeric(FindExtremeValuePupil(id, pelod2.datalist[["pup.right"]]))
+  min.val1 <- FindExtremeValuePupil(id, pelod2.datalist[["pup.left"]])
+  min.val2 <- FindExtremeValuePupil(id, pelod2.datalist[["pup.right"]])
   if (is.na(min.val1) || is.na(min.val2))
     return (NA)
   else if (min.val1 <= cutoffs[[1]][1] && min.val2 <= cutoffs[[1]][1])
@@ -50,11 +50,11 @@ Pupillary <- function(id) {
 #!is.numeric(unlist(FindValues(id, pelod2.datalist[["lac.wholeblood"]]), recursive = F))
 Lactatemia <- function(id) {
   cutoffs <- list(c(11.0, 4), c(5.0, 1))
-  max.val1 <- as.numeric(FindExtremeValueMax(id, pelod2.datalist[["lac"]]))
-  if (!is.numeric(as.numeric(FindValues(id, pelod2.datalist[["lac.wholeblood"]])))) 
+  max.val1 <- FindExtremeValueMax(id, pelod2.datalist[["lac"]])
+  if (!is.numeric(FindValues(id, pelod2.datalist[["lac.wholeblood"]]))) 
     return (4)
   else
-    max.val2 <- as.numeric(FindExtremeValueMax(id, pelod2.datalist[["lac.wholeblood"]]))
+    max.val2 <- FindExtremeValueMax(id, pelod2.datalist[["lac.wholeblood"]])
   FindCutoffs <- function(X, molarity) {
     if (is.na(molarity))
       return (NA)
@@ -75,7 +75,7 @@ Lactatemia <- function(id) {
 #True
 MAP <- function(id, age) {
   cutoffs <- list(list(c(37, 6), c(51, 3), c(66, 2)), list(c(35, 6), c(48, 3), c(64, 2)), list(c(31, 6), c(44, 3), c(61, 2)), list(c(30, 6), c(43, 3), c(59, 2)), list(c(24, 6), c(38, 3), c(54, 2)), list(c(16, 6), c(30, 3), c(45, 2)))
-  min.val <- as.numeric(FindExtremeValueMin(id, pelod2.datalist[["map"]]))
+  min.val <- FindExtremeValueMin(id, pelod2.datalist[["map"]])
   age.index <- min(unlist(sapply(seq_len(length(ages)), FindAgeCutoffs, age = age), recursive = F))
   FindCutoffs <- function(X, pressure) {
     if (is.na(pressure))
@@ -95,7 +95,7 @@ MAP <- function(id, age) {
 #max never selects the specific non-numeric data in this sheet but a workaround would be ideal
 Creatinine <- function(id, age) {
   cutoffs <- list(list(c(93, 2)), list(c(59, 2)), list(c(51, 2)), list(c(35, 2)), list(c(23, 2)), list(c(70, 2)))
-  max.val <- as.numeric(FindExtremeValueMax(id, pelod2.datalist[["cr"]])) * 88.44
+  max.val <- FindExtremeValueMax(id, pelod2.datalist[["cr"]]) * 88.44
   age.index <- min(unlist(sapply(seq_len(length(ages)), FindAgeCutoffs, age = age), recursive = F))
   FindCutoffs <- function(X, cr.molarity) {
     if (is.na(cr.molarity))
@@ -111,10 +111,19 @@ Creatinine <- function(id, age) {
 #PaO2 -> partial pressure arterial oxygen
 #FIO2 -> fraction of inspired oxygen
 #True
+#Find min value of pao2 and fio2 value with closest timestamp (before or after)
+#use match to find index of min.val to extract corresponding timestamp
 Carrico <- function(id) {
   cutoffs <- list(c(60, 2))
-  min.val <- as.numeric(FindExtremeValueMin(id, pelod2.datalist[["pao2"]]))
-  max.val <- as.numeric(FindExtremeValueMax(id, pelod2.datalist[["fio2"]]))
+  pao2.frame <- pelod2.datalist[["pao2"]]
+  min.val <- FindExtremeValueMin(id, pao2.frame)
+  min.val.time <- as.Date(pao2.frame[match(min.val, pao2.frame$Clinical.Event.Result), "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
+  FindClosestTime <- function(id, t) {
+    vals <- as.Date(pao2.frame[which(pao2.frame$encid == id), "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
+    closest.time.index <- which.closest(vals, t)
+    return (closest.time.index)
+  }
+  max.val <- FindValues(id, pelod2.datalist[["fio2"]])[FindClosestTime(id, min.val.time)]
   if (is.na(min.val) || is.na(max.val))
     return (NA)
   else if (min.val / max.val <= cutoffs[[1]][1])
@@ -129,7 +138,7 @@ PaCO2 <- function(id) {
   cutoffs <- list(c(95, 3), c(59, 1))
   if (!is.numeric(as.numeric(FindValues(id, pelod2.datalist[["paco2"]]))))
     return (3)
-  max.val <- as.numeric(FindExtremeValueMax(id, pelod2.datalist[["paco2"]]))
+  max.val <- FindExtremeValueMax(id, pelod2.datalist[["paco2"]])
   FindCutoffs <- function(X, partial.pressure) {
     if (is.na(partial.pressure))
       return (NA)
@@ -144,7 +153,7 @@ PaCO2 <- function(id) {
 #False
 Ventilation <- function(id) {
   cutoffs <- list(c(1, 3))
-  max.val <- as.numeric(FindExtremeValueVent(id, pelod2.datalist[["vent"]]))
+  max.val <- FindExtremeValueVent(id, pelod2.datalist[["vent"]])
   if (is.na(max.val))
     return (NA)
   else if (max.val >= cutoffs[[1]][1])
@@ -160,7 +169,7 @@ WBC <- function(id) {
   cutoffs <- list(c(2, 2))
   if (!is.numeric(FindValues(id, pelod2.datalist[["wbc"]])))
     return (2)
-  min.val = as.numeric(FindExtremeValueMin(id, pelod2.datalist[["wbc"]]))
+  min.val = FindExtremeValueMin(id, pelod2.datalist[["wbc"]])
   if (is.na(min.val))
     return (NA)
   else if (min.val <= cutoffs[[1]][1])
@@ -172,7 +181,7 @@ WBC <- function(id) {
 #True
 Platelet <- function(id) {
   cutoffs <- list(c(76, 2), c(141, 1))
-  min.val = as.numeric(FindExtremeValueMin(id, pelod2.datalist[["plate"]]))
+  min.val = FindExtremeValueMin(id, pelod2.datalist[["plate"]])
   FindCutoffs <- function(X, plate.count) {
     if (is.na(plate.count))
       return (NA)
@@ -188,17 +197,27 @@ ProbMortality <- function(pelod2) {
 }
 
 FindValues <- function(id, frame) {
-  vals <- frame[which(frame$encid == id), "Clinical.Event.Result"]
-  return (vals)
+  vals <- as.numeric(frame[which(frame$encid == id), "Clinical.Event.Result"])
+  if (all(is.na(vals)))
+    return (NA)
+  else
+    return (vals[complete.cases(vals)])
 }
+
 FindExtremeValueMax <- function(id, frame) {
-  vals <- frame[which(frame$encid == id), "Clinical.Event.Result"]
-  return (max(vals))
+  vals <- as.numeric(frame[which(frame$encid == id), "Clinical.Event.Result"])
+  if (all(is.na(vals)))
+    return (NA)
+  else
+    return (max(vals, na.rm = T))
 }
 
 FindExtremeValueMin <- function(id, frame) {
-  vals <- frame[which(frame$encid == id), "Clinical.Event.Result"]
-  return (min(vals))
+  vals <- as.numeric(frame[which(frame$encid == id), "Clinical.Event.Result"])
+  if (all(is.na(vals)))
+    return (NA)
+  else
+    return (min(vals, na.rm = T))
 }
 
 FindExtremeValuePupil <- function(id, frame) {
