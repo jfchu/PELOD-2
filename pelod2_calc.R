@@ -23,7 +23,7 @@ GComa <- function(id) {
   FindCutoffs <- function(X, score) {
     if (is.na(score)) {
       return (NA)
-    }else if (score <= cutoffs[[1]][1]) {
+    } else if (score <= cutoffs[[X]][1]) {
       return (cutoffs[[X]][2])
     }
     return (0)
@@ -110,20 +110,24 @@ Creatinine <- function(id, age) {
 
 #Carrico index = PaO2(measured in mm Hg)/FIO2
 #PaO2 -> partial pressure arterial oxygen
-#FIO2 -> fraction of inspired oxygen
+#FiO2 -> fraction of inspired oxygen
 #True
 #Finds min value of pao2 and fio2 value with closest timestamp (before or after)
+#FiO2 data measured in percent in file
 Carrico <- function(id) {
   cutoffs <- list(c(60, 2))
-  pao2.frame <- pelod2.datalist[["pao2"]]
+  pao2.frame <- pelod2.datalist[["pao2"]][which(pelod2.datalist[["pao2"]]$encid == id), ]
+  fio2.frame <- pelod2.datalist[["fio2"]][which(pelod2.datalist[["fio2"]]$encid == id), ]
   min.val <- FindExtremeValueMin(id, pao2.frame)
-  min.val.time <- as.Date(pao2.frame[match(min.val, pao2.frame$Clinical.Event.Result), "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
-  FindClosestTime <- function(id, t) {
-    vals <- as.Date(pao2.frame[which(pao2.frame$encid == id), "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
+  min.val.time <- as.Date(pao2.frame[match(min.val, pao2.frame[, "Clinical.Event.Result"]), "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
+  FindClosestTime <- function(t) {
+    if(identical(nrow(fio2.frame), 0L))
+      return (NA)
+    vals <- as.Date(fio2.frame[, "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
     closest.time.index <- which.closest(vals, t)
     return (closest.time.index)
   }
-  max.val <- as.numeric(FindValues(id, pelod2.datalist[["fio2"]]))[FindClosestTime(id, min.val.time)]
+  max.val <- as.numeric(FindValues(id, fio2.frame))[FindClosestTime(min.val.time)] / 100
   if (is.na(min.val) || is.na(max.val))
     return (NA)
   else if (min.val / max.val <= cutoffs[[1]][1])
@@ -198,6 +202,8 @@ ProbMortality <- function(pelod2) {
 
 FindValues <- function(id, frame) {
   vals <- frame[which(frame$encid == id), "Clinical.Event.Result"]
+  if(identical(nrow(vals), 0L))
+    return(NA)
   if (all(is.na(vals)))
     return (NA)
   else
@@ -259,6 +265,8 @@ PELOD2Scores <- function(frame.list) {
 #consider whether to calculate total score by adding neuro, cardio, ... or adding gcs, pup, ...
 #see whether NA values will influence above decision
 #    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup + pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map + pelod2.frame$pelod2.cr + pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent + pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
+    pelod2.frame$pelod2.mortality.prediction = ProbMortality(pelod2.frame$pelod2.scores)
+    pelod2.frame$pelod2.mortality.actual = 
     return (pelod2.frame)
 }
 
@@ -302,5 +310,13 @@ pelod2.datalist <- list(
   plate = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Platelets"))
 )
 
-View(PELOD2Scores(pelod2.datalist))
-View(FindDifferences(PELOD2Scores(pelod2.datalist)))
+data <- PELOD2Scores(pelod2.datalist)
+View(data)
+View(FindDifferences(data))
+
+#To-do:
+#1. Calculate AUROC and Hosmer-Lemeshow calibration of model for PICU data
+#2. Simple imputation of missing data
+#3. Variable correlation (Spearman or Pearson)
+#4. Try to reduce variables used (calculate AIC and/or BIC of each configuration)
+#4. Try generalized additive models, decision trees, support vector machine, etc.
