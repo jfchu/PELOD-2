@@ -23,7 +23,7 @@ GComa <- function(id) {
   FindCutoffs <- function(X, score) {
     if (is.na(score)) {
       return (NA)
-    }else if (score <= cutoffs[[1]][1]) {
+    } else if (score <= cutoffs[[X]][1]) {
       return (cutoffs[[X]][2])
     }
     return (0)
@@ -51,10 +51,11 @@ Pupillary <- function(id) {
 Lactatemia <- function(id) {
   cutoffs <- list(c(11.0, 4), c(5.0, 1))
   max.val1 <- FindExtremeValueMax(id, pelod2.datalist[["lac"]])
-  if (!is.numeric(FindValues(id, pelod2.datalist[["lac.wholeblood"]]))) 
+  if (!is.numeric(as.numeric(FindValues(id, pelod2.datalist[["lac.wholeblood"]])))) {
     return (4)
-  else
+  } else {
     max.val2 <- FindExtremeValueMax(id, pelod2.datalist[["lac.wholeblood"]])
+  }
   FindCutoffs <- function(X, molarity) {
     if (is.na(molarity))
       return (NA)
@@ -109,21 +110,24 @@ Creatinine <- function(id, age) {
 
 #Carrico index = PaO2(measured in mm Hg)/FIO2
 #PaO2 -> partial pressure arterial oxygen
-#FIO2 -> fraction of inspired oxygen
+#FiO2 -> fraction of inspired oxygen
 #True
-#Find min value of pao2 and fio2 value with closest timestamp (before or after)
-#use match to find index of min.val to extract corresponding timestamp
+#Finds min value of pao2 and fio2 value with closest timestamp (before or after)
+#FiO2 data measured in percent in file
 Carrico <- function(id) {
   cutoffs <- list(c(60, 2))
-  pao2.frame <- pelod2.datalist[["pao2"]]
+  pao2.frame <- pelod2.datalist[["pao2"]][which(pelod2.datalist[["pao2"]]$encid == id), ]
+  fio2.frame <- pelod2.datalist[["fio2"]][which(pelod2.datalist[["fio2"]]$encid == id), ]
   min.val <- FindExtremeValueMin(id, pao2.frame)
-  min.val.time <- as.Date(pao2.frame[match(min.val, pao2.frame$Clinical.Event.Result), "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
-  FindClosestTime <- function(id, t) {
-    vals <- as.Date(pao2.frame[which(pao2.frame$encid == id), "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
+  min.val.time <- as.Date(pao2.frame[match(min.val, pao2.frame[, "Clinical.Event.Result"]), "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
+  FindClosestTime <- function(t) {
+    if(identical(nrow(fio2.frame), 0L))
+      return (NA)
+    vals <- as.Date(fio2.frame[, "Clinical.Events.Verified.Date/Time"], origin="1970-01-01")
     closest.time.index <- which.closest(vals, t)
     return (closest.time.index)
   }
-  max.val <- FindValues(id, pelod2.datalist[["fio2"]])[FindClosestTime(id, min.val.time)]
+  max.val <- as.numeric(FindValues(id, fio2.frame))[FindClosestTime(min.val.time)] / 100
   if (is.na(min.val) || is.na(max.val))
     return (NA)
   else if (min.val / max.val <= cutoffs[[1]][1])
@@ -164,11 +168,11 @@ Ventilation <- function(id) {
 #wbc.count * 10^9/L
 #True
 #wbc contains data with "<" character 
-#Fix this; all encid's have score of 2
 WBC <- function(id) {
   cutoffs <- list(c(2, 2))
-  if (!is.numeric(FindValues(id, pelod2.datalist[["wbc"]])))
+  if (!is.numeric(as.numeric(FindValues(id, pelod2.datalist[["wbc"]])))) {
     return (2)
+  }
   min.val = FindExtremeValueMin(id, pelod2.datalist[["wbc"]])
   if (is.na(min.val))
     return (NA)
@@ -197,7 +201,9 @@ ProbMortality <- function(pelod2) {
 }
 
 FindValues <- function(id, frame) {
-  vals <- as.numeric(frame[which(frame$encid == id), "Clinical.Event.Result"])
+  vals <- frame[which(frame$encid == id), "Clinical.Event.Result"]
+  if(identical(nrow(vals), 0L))
+    return(NA)
   if (all(is.na(vals)))
     return (NA)
   else
@@ -240,25 +246,16 @@ PELOD2Scores <- function(frame.list) {
     pelod2.id = read.xlsx("PELOD2_calculator_deid_unencrypt.xlsx")$encid,
     pelod2.age = AgeMonths(read.xlsx("admit1picu_deid_unencrypt.xlsx")$AGEDAYS))
     pelod2.frame$pelod2.gcs = sapply(pelod2.frame$pelod2.id, GComa)
-    print("gcs")
     pelod2.frame$pelod2.pup = sapply(pelod2.frame$pelod2.id, Pupillary)
-    print("pup")
     pelod2.frame$pelod2.lac = sapply(pelod2.frame$pelod2.id, Lactatemia)
-    print("lac")
     pelod2.frame$pelod2.map = mapply(MAP, pelod2.frame$pelod2.id, pelod2.frame$pelod2.age)
-    print("map")
     pelod2.frame$pelod2.cr = mapply(Creatinine, pelod2.frame$pelod2.id, pelod2.frame$pelod2.age)
-    print("cr")
     pelod2.frame$pelod2.carrico = sapply(pelod2.frame$pelod2.id, Carrico)
-    print("carrico")
     pelod2.frame$pelod2.paco2 = sapply(pelod2.frame$pelod2.id, PaCO2)
-    print("paco2")
     pelod2.frame$pelod2.vent = sapply(pelod2.frame$pelod2.id, Ventilation)
-    print("vent")
     pelod2.frame$pelod2.wbc = sapply(pelod2.frame$pelod2.id, WBC)
-    print("wbc")
     pelod2.frame$pelod2.plate = sapply(pelod2.frame$pelod2.id, Platelet)
-    print("plate")
+    pelod2.frame[is.na(pelod2.frame)] <- 0
     pelod2.frame$pelod2.neuroscores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup
     pelod2.frame$pelod2.cardioscores = pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map
     pelod2.frame$pelod2.renalscores = pelod2.frame$pelod2.cr
@@ -268,11 +265,81 @@ PELOD2Scores <- function(frame.list) {
 #consider whether to calculate total score by adding neuro, cardio, ... or adding gcs, pup, ...
 #see whether NA values will influence above decision
 #    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup + pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map + pelod2.frame$pelod2.cr + pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent + pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
+    pelod2.frame$deceased = FindDeceased(read.xlsx("admit1picu_deid_unencrypt.xlsx"))
+    pelod2.frame$pred = ProbMortality(pelod2.frame$pelod2.scores)
     return (pelod2.frame)
 }
 
 RemoveNA <- function(df) {
   return(df[complete.cases(df), ])
+}
+
+FindDeceased <- function(frame) {
+  IsDeceased <- function(id, indices) {
+    if (is.element(id, indices))
+      return (1)
+    else 
+      return (0)
+  }
+  return (sapply(read.xlsx("PELOD2_calculator_deid_unencrypt.xlsx")$encid, IsDeceased, indices = which(frame$Discharge.Disposition == "Deceased")))
+}
+
+FindDifferences <- function(frame) {
+  master <- read.xlsx("PELOD2_calculator_deid_unencrypt.xlsx")
+  differences <- data.frame(
+    gcs = frame$pelod2.gcs - master$GCS_Points,
+    pup = frame$pelod2.pup - master$Pupils_Points,
+    lac = frame$pelod2.lac - master$Lactate_Points,
+    map = frame$pelod2.map - master$MAP_Points,
+    cr = frame$pelod2.cr - master$Cr_Points,
+    carrico = frame$pelod2.carrico - master$PaO2FiO2_Points_Near,
+    paco2 = frame$pelod2.paco2 - master$PaCO2_Points,
+    vent = frame$pelod2.vent - master$MV_Points,
+    wbc = frame$pelod2.wbc - master$WBC_Points,
+    plate = frame$pelod2.plate - master$Plt_Points
+  )
+  return (differences)
+}
+
+#Adapted code from https://github.com/joyofdata/joyofdata-articles/blob/master/roc-auc/plot_pred_type_distribution.R 
+plot_pred_type_distribution <- function(df, threshold) {
+  v <- rep(NA, nrow(df))
+  v <- ifelse(df$pred >= threshold & df$deceased == 1, "TP", v)
+  v <- ifelse(df$pred >= threshold & df$deceased == 0, "FP", v)
+  v <- ifelse(df$pred < threshold & df$deceased == 1, "FN", v)
+  v <- ifelse(df$pred < threshold & df$deceased == 0, "TN", v)
+  
+  df$pred_type <- v
+  
+  ggplot(data=df, aes(x=deceased, y=pred)) + 
+    geom_violin(fill=rgb(1,1,1,alpha=0.6), color=NA) + 
+    geom_jitter(aes(color=pred_type), alpha=0.6) +
+    geom_hline(yintercept=threshold, color="red", alpha=0.6) +
+    scale_color_discrete(name = "type") +
+    labs(title=sprintf("Threshold at %.2f", threshold))
+}
+
+#Adapted code from https://github.com/joyofdata/joyofdata-articles/blob/master/roc-auc/calculate_roc.R
+calculate_roc <- function(df, cost_of_fp, cost_of_fn, n) {
+  tpr <- function(df, threshold) {
+    sum(df$pred >= threshold & df$deceased == 1) / sum(df$deceased == 1)
+  }
+  
+  fpr <- function(df, threshold) {
+    sum(df$pred >= threshold & df$deceased == 0) / sum(df$deceased == 0)
+  }
+  
+  cost <- function(df, threshold, cost_of_fp, cost_of_fn) {
+    sum(df$pred >= threshold & df$deceased == 0) * cost_of_fp + 
+      sum(df$pred < threshold & df$deceased == 1) * cost_of_fn
+  }
+  
+  roc <- data.frame(threshold = seq(0,1,length.out=n), tpr=NA, fpr=NA)
+  roc$tpr <- sapply(roc$threshold, function(th) tpr(df, th))
+  roc$fpr <- sapply(roc$threshold, function(th) fpr(df, th))
+  roc$cost <- sapply(roc$threshold, function(th) cost(df, th, cost_of_fp, cost_of_fn))
+  
+  return(roc)
 }
 
 #File names:
@@ -294,16 +361,35 @@ pelod2.datalist <- list(
   plate = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Platelets"))
 )
 
-View(PELOD2Scores(pelod2.datalist))
+id = read.xlsx("PELOD2_calculator_deid_unencrypt.xlsx")$encid
+pelod2.raw <- list(
+  age = AgeMonths(read.xlsx("admit1picu_deid_unencrypt.xlsx")$AGEDAYS),
+  GCS = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "GCS"))),
+  pup.left = sapply(id, FindExtremeValuePupil, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Pupilary Reaction Left"))),
+  pup.right = sapply(id, FindExtremeValuePupil, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Pupilary Reaction Right"))),
+  map = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Mean Arterial Pressure"))),
+  cr = sapply(id, FindExtremeValueMax, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Creatine"))),
+  pao2 = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "PaO2"))),
+  fio2 = sapply(id, FindExtremeValueMax, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "FiO2"))),
+  paco2 = sapply(id, FindExtremeValueMax, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "PaCo2"))),
+  vent = sapply(id, FindExtremeValueVent, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Mechanical Vent"))),
+  wbc = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "WBC"))),
+  plate = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Platelets")))
+)
 
-#for (i in 1:13) 
-#  pelod2.datalist[[i]][["Clinical.Event.Performed.Date/Time"]] <- convertToDateTime(pelod2.datalist[[i]][["Clinical.Event.Performed.Date/Time"]])
+#To-do:
+#1. Calculate AUROC and Hosmer-Lemeshow calibration of model for PICU data
+#2. Simple imputation of missing data
+#3. Variable correlation (Spearman or Pearson)
+#4. Try to reduce variables used (calculate AIC and/or BIC of each configuration)
+#4. Try generalized additive models, decision trees, support vector machine, etc.
 
-#pelod2.datalist[[1]][["Clinical.Event.Performed.Date/Time"]] <- convertToDateTime(pelod2.datalist[[1]][["Clinical.Event.Performed.Date/Time"]])
-#print (pelod2.datalist[[1]]["Clinical.Event.Performed.Date/Time"])
-
-#Issues to consider:
-#1. Handling non-numeric data (finished except for creatinine)
-#Non-numeric values in Lactate Whole Blood(>), Creatinine(<), PaCO2(>), WBC(<) 
-#2. Unlisting list containing character and numeric data (coercing numeric data to character)
-#3. Creatine vs. creatinine data value differences in different files (finished)
+#Websites to look at:
+#https://cran.r-project.org/web/packages/givitiR/vignettes/givitiR.html 
+#https://www.r-bloggers.com/calculating-auc-the-area-under-a-roc-curve/ 
+#https://www.r-bloggers.com/illustrated-guide-to-roc-and-auc/ 
+#http://thestatsgeek.com/2014/05/05/area-under-the-roc-curve-assessing-discrimination-in-logistic-regression/
+#http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/
+#http://myrcodes.blogspot.com/2013/12/area-under-curve-auc-proc-package.html 
+#https://rpubs.com/Wangzf/pROC 
+#https://cran.r-project.org/web/packages/pROC/pROC.pdf 
