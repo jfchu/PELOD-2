@@ -265,13 +265,23 @@ PELOD2Scores <- function(frame.list) {
 #consider whether to calculate total score by adding neuro, cardio, ... or adding gcs, pup, ...
 #see whether NA values will influence above decision
 #    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup + pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map + pelod2.frame$pelod2.cr + pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent + pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
-    pelod2.frame$pelod2.mortality.prediction = ProbMortality(pelod2.frame$pelod2.scores)
-    pelod2.frame$pelod2.mortality.actual = 
+    pelod2.frame$deceased = FindDeceased(read.xlsx("admit1picu_deid_unencrypt.xlsx"))
+    pelod2.frame$pred = ProbMortality(pelod2.frame$pelod2.scores)
     return (pelod2.frame)
 }
 
 RemoveNA <- function(df) {
   return(df[complete.cases(df), ])
+}
+
+FindDeceased <- function(frame) {
+  IsDeceased <- function(id, indices) {
+    if (is.element(id, indices))
+      return (1)
+    else 
+      return (0)
+  }
+  return (sapply(read.xlsx("PELOD2_calculator_deid_unencrypt.xlsx")$encid, IsDeceased, indices = which(frame$Discharge.Disposition == "Deceased")))
 }
 
 FindDifferences <- function(frame) {
@@ -289,6 +299,47 @@ FindDifferences <- function(frame) {
     plate = frame$pelod2.plate - master$Plt_Points
   )
   return (differences)
+}
+
+#Adapted code from https://github.com/joyofdata/joyofdata-articles/blob/master/roc-auc/plot_pred_type_distribution.R 
+plot_pred_type_distribution <- function(df, threshold) {
+  v <- rep(NA, nrow(df))
+  v <- ifelse(df$pred >= threshold & df$deceased == 1, "TP", v)
+  v <- ifelse(df$pred >= threshold & df$deceased == 0, "FP", v)
+  v <- ifelse(df$pred < threshold & df$deceased == 1, "FN", v)
+  v <- ifelse(df$pred < threshold & df$deceased == 0, "TN", v)
+  
+  df$pred_type <- v
+  
+  ggplot(data=df, aes(x=deceased, y=pred)) + 
+    geom_violin(fill=rgb(1,1,1,alpha=0.6), color=NA) + 
+    geom_jitter(aes(color=pred_type), alpha=0.6) +
+    geom_hline(yintercept=threshold, color="red", alpha=0.6) +
+    scale_color_discrete(name = "type") +
+    labs(title=sprintf("Threshold at %.2f", threshold))
+}
+
+#Adapted code from https://github.com/joyofdata/joyofdata-articles/blob/master/roc-auc/calculate_roc.R
+calculate_roc <- function(df, cost_of_fp, cost_of_fn, n) {
+  tpr <- function(df, threshold) {
+    sum(df$pred >= threshold & df$deceased == 1) / sum(df$deceased == 1)
+  }
+  
+  fpr <- function(df, threshold) {
+    sum(df$pred >= threshold & df$deceased == 0) / sum(df$deceased == 0)
+  }
+  
+  cost <- function(df, threshold, cost_of_fp, cost_of_fn) {
+    sum(df$pred >= threshold & df$deceased == 0) * cost_of_fp + 
+      sum(df$pred < threshold & df$deceased == 1) * cost_of_fn
+  }
+  
+  roc <- data.frame(threshold = seq(0,1,length.out=n), tpr=NA, fpr=NA)
+  roc$tpr <- sapply(roc$threshold, function(th) tpr(df, th))
+  roc$fpr <- sapply(roc$threshold, function(th) fpr(df, th))
+  roc$cost <- sapply(roc$threshold, function(th) cost(df, th, cost_of_fp, cost_of_fn))
+  
+  return(roc)
 }
 
 #File names:
@@ -310,9 +361,22 @@ pelod2.datalist <- list(
   plate = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Platelets"))
 )
 
-data <- PELOD2Scores(pelod2.datalist)
-View(data)
-View(FindDifferences(data))
+id = read.xlsx("PELOD2_calculator_deid_unencrypt.xlsx")$encid
+pelod2.raw <- data.frame(
+  age = AgeMonths(read.xlsx("admit1picu_deid_unencrypt.xlsx")$AGEDAYS),
+  GCS = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "GCS"))),
+  pup.left = sapply(id, FindExtremeValuePupil, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Pupilary Reaction Left"))),
+  pup.right = sapply(id, FindExtremeValuePupil, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Pupilary Reaction Right"))),
+  map = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Mean Arterial Pressure"))),
+  cr = sapply(id, FindExtremeValueMax, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Creatine"))),
+  pao2 = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "PaO2"))),
+  fio2 = sapply(id, FindExtremeValueMax, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "FiO2"))),
+  paco2 = sapply(id, FindExtremeValueMax, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "PaCo2"))),
+  vent = sapply(id, FindExtremeValueVent, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Mechanical Vent"))),
+  wbc = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "WBC"))),
+  plate = sapply(id, FindExtremeValueMin, frame = RemoveNA(read.xlsx("PELOD2_2015-2016_deid_unencrypt.xlsx", sheet = "Platelets")))
+)
+pelod2.raw[is.na(pelod2.raw)] <- 0
 
 #To-do:
 #1. Calculate AUROC and Hosmer-Lemeshow calibration of model for PICU data
@@ -320,3 +384,13 @@ View(FindDifferences(data))
 #3. Variable correlation (Spearman or Pearson)
 #4. Try to reduce variables used (calculate AIC and/or BIC of each configuration)
 #4. Try generalized additive models, decision trees, support vector machine, etc.
+
+#Websites to look at:
+#https://cran.r-project.org/web/packages/givitiR/vignettes/givitiR.html 
+#https://www.r-bloggers.com/calculating-auc-the-area-under-a-roc-curve/ 
+#https://www.r-bloggers.com/illustrated-guide-to-roc-and-auc/ 
+#http://thestatsgeek.com/2014/05/05/area-under-the-roc-curve-assessing-discrimination-in-logistic-regression/
+#http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/
+#http://myrcodes.blogspot.com/2013/12/area-under-curve-auc-proc-package.html 
+#https://rpubs.com/Wangzf/pROC 
+#https://cran.r-project.org/web/packages/pROC/pROC.pdf 
