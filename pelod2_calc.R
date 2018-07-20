@@ -200,6 +200,10 @@ ProbMortality <- function(pelod2) {
   return (1 / (1 + exp(6.61 - 0.47 * pelod2)))
 }
 
+ProbMortalityNew <- function(pelod2) {
+  return (1 / (1 + exp(-6.76204 + 0.3904402 * pelod2$pelod2.gcs + 0.5149909 * pelod2$pelod2.pup + 0.1381793 * pelod2$pelod2.map - 0.06871416 * pelod2$pelod2.cr + 0.2626874 * pelod2$pelod2.carrico + 0.8777295 * pelod2$pelod2.paco2 + 0.1311851 * pelod2$pelod2.vent + 0.7447805 * pelod2$pelod2.wbc + 0.2743563 * pelod2$pelod2.plate)))
+}
+
 FindValues <- function(id, frame) {
   vals <- frame[which(frame$encid == id), "Clinical.Event.Result"]
   if(identical(nrow(vals), 0L))
@@ -256,17 +260,17 @@ PELOD2Scores <- function(frame.list) {
     pelod2.frame$pelod2.wbc = sapply(pelod2.frame$pelod2.id, WBC)
     pelod2.frame$pelod2.plate = sapply(pelod2.frame$pelod2.id, Platelet)
     pelod2.frame[is.na(pelod2.frame)] <- 0
-    pelod2.frame$pelod2.neuroscores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup
-    pelod2.frame$pelod2.cardioscores = pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map
-    pelod2.frame$pelod2.renalscores = pelod2.frame$pelod2.cr
-    pelod2.frame$pelod2.respscores = pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent
-    pelod2.frame$pelod2.hemascores = pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
-    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.neuroscores + pelod2.frame$pelod2.cardioscores + pelod2.frame$pelod2.renalscores + pelod2.frame$pelod2.respscores + pelod2.frame$pelod2.hemascores
+#    pelod2.frame$pelod2.neuroscores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup
+#    pelod2.frame$pelod2.cardioscores = pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map
+#    pelod2.frame$pelod2.renalscores = pelod2.frame$pelod2.cr
+#    pelod2.frame$pelod2.respscores = pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent
+#    pelod2.frame$pelod2.hemascores = pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
+#    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.neuroscores + pelod2.frame$pelod2.cardioscores + pelod2.frame$pelod2.renalscores + pelod2.frame$pelod2.respscores + pelod2.frame$pelod2.hemascores
 #consider whether to calculate total score by adding neuro, cardio, ... or adding gcs, pup, ...
 #see whether NA values will influence above decision
 #    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup + pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map + pelod2.frame$pelod2.cr + pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent + pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
+    pelod2.frame$pred = ProbMortalityNew(pelod2.frame)
     pelod2.frame$deceased = FindDeceased(read.xlsx("admit1picu_deid_unencrypt.xlsx"))
-    pelod2.frame$pred = ProbMortality(pelod2.frame$pelod2.scores)
     return (pelod2.frame)
 }
 
@@ -378,14 +382,124 @@ pelod2.raw <- data.frame(
 )
 pelod2.raw[is.na(pelod2.raw)] <- 0
 
-#To-do:
-#1. Calculate AUROC and Hosmer-Lemeshow calibration of model for PICU data
-#2. Simple imputation of missing data
+#LOOCV code borrowed from https://www.r-bloggers.com/predicting-creditability-using-logistic-regression-in-r-cross-validating-the-classifier-part-2-2/
+LOOCV <- function(data) {
+acc <- NULL
+for(i in 1:nrow(data))
+{
+  # Train-test splitting
+  # 499 samples -> fitting
+  # 1 sample -> testing
+  train <- data[-i,]
+  test <- data[i,]
+  
+  # Fitting
+  model2 <- glm(deceased~.,family=binomial,data=train)
+  
+  # Predict results
+  results_prob <- predict(model2,subset(test,select=c(2:9)),type='response')
+  
+  # If prob > 0.5 then 1, else 0
+  results <- ifelse(results_prob > 0.5,1,0)
+  
+  # Actual answers
+  answers <- test$deceased
+  
+  # Calculate accuracy
+  misClassificError <- mean(answers != results)
+  
+  # Collecting results
+  acc[i] <- 1-misClassificError
+}
+
+  # Average accuracy of the model
+  cat("mean accuracy: ", mean(acc))
+
+  # Histogram of the model accuracy
+  hist(acc,xlab='Accuracy',ylab='Freq',main='Accuracy LOOCV',
+     col='cyan',border='blue',density=30)
+}
+
+##Results of Hosmer-Lemeshow GOF test (original model)
+#$Table_HLtest
+#total meanpred meanobs predicted observed
+#0.00135            1655    0.001   0.001      2.23        1
+#0.00215             377    0.002   0.000      0.81        0
+#0.00344             434    0.003   0.000      1.49        0
+#0.00549             481    0.005   0.000      2.64        0
+#0.00875             605    0.009   0.008      5.29        5
+#0.01393             186    0.014   0.005      2.59        1
+#0.02210             156    0.022   0.000      3.45        0
+#0.03489             334    0.035   0.009     11.65        3
+#0.05468              94    0.055   0.032      5.14        3
+#0.08471             195    0.085   0.026     16.52        5
+#0.12898             108    0.129   0.028     13.93        3
+#0.19155              90    0.192   0.022     17.24        2
+#0.27488              82    0.275   0.024     22.54        2
+#0.37754              56    0.378   0.036     21.14        2
+#0.49250              53    0.493   0.019     26.10        1
+#0.60826              32    0.608   0.031     19.46        1
+#0.71300              28    0.713   0.143     19.96        4
+#0.79899              28    0.799   0.250     22.37        7
+#0.86413              25    0.864   0.200     21.60        5
+#0.91052              15    0.911   0.333     13.66        5
+#0.94213              19    0.942   0.579     17.90       11
+#[0.96303,0.98523)    26    0.970   0.615     25.23       16
+#[0.98523,0.99635)    23    0.990   0.739     22.78       17
+#[0.99635,0.99986]    16    0.998   0.938     15.97       15
+
+#$Chi_square
+#[1] 786.73
+
+#$df
+#[1] 210
+
+#$p_value
+#[1] 0
+
+
+##Results of logistic regression on Children's PICU data (updated model)
+#Deviance Residuals: 
+#  Min       1Q   Median       3Q      Max  
+#-2.4143  -0.0936  -0.0584  -0.0481   3.6778  
+
+#Coefficients:
+#  Estimate Std. Error z value Pr(>|z|)    
+#(Intercept)    -6.76204    0.42801 -15.799  < 2e-16 ***
+#  pelod2.gcs      0.39044    0.13843   2.821  0.00479 ** 
+#  pelod2.pup      0.51499    0.05739   8.973  < 2e-16 ***
+#  pelod2.lac      0.50890    0.10605   4.799 1.60e-06 ***
+#  pelod2.map      0.13818    0.09022   1.532  0.12565    
+#pelod2.cr      -0.06871    0.15618  -0.440  0.65996    
+#pelod2.carrico  0.26269    0.17666   1.487  0.13703    
+#pelod2.paco2    0.87773    0.16773   5.233 1.67e-07 ***
+#  pelod2.vent     0.13119    0.19437   0.675  0.49973    
+#pelod2.wbc      0.74478    0.17899   4.161 3.17e-05 ***
+#  pelod2.plate    0.27436    0.19434   1.412  0.15803    
+#---
+#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#(Dispersion parameter for binomial family taken to be 1)
+
+#Null deviance: 1054.78  on 5117  degrees of freedom
+#Residual deviance:  484.51  on 5107  degrees of freedom
+#AIC: 506.51
+
+#Number of Fisher Scoring iterations: 9
+###################################################################
+
+##To-do:
+#1. Calculate AUROC and Hosmer-Lemeshow calibration of model for PICU data (done)
+#2. Simple imputation of missing data (possibly unnecessary)
 #3. Variable correlation (Spearman or Pearson)
 #4. Try to reduce variables used (calculate AIC and/or BIC of each configuration)
-#4. Try generalized additive models, decision trees, support vector machine, etc.
+#5. Find new cutoffs with CHAID method and decision trees/random forest
+#6. Try generalized additive models, decision trees, support vector machine, etc.
 
-#Websites to look at:
+
+##Websites to look at:
+#https://cran.r-project.org/web/packages/PredictABEL/PredictABEL.pdf
+#https://www.r-bloggers.com/how-to-perform-a-logistic-regression-in-r/ 
 #https://cran.r-project.org/web/packages/givitiR/vignettes/givitiR.html 
 #https://www.r-bloggers.com/calculating-auc-the-area-under-a-roc-curve/ 
 #https://www.r-bloggers.com/illustrated-guide-to-roc-and-auc/ 
