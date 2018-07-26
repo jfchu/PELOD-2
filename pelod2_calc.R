@@ -200,12 +200,264 @@ ProbMortality <- function(pelod2) {
   return (1 / (1 + exp(6.61 - 0.47 * pelod2)))
 }
 
+#Check whether negative sign was added correctly
 ProbMortalityNew <- function(pelod2) {
-  return (1 / (1 + exp(-6.76204 + 0.3904402 * pelod2$pelod2.gcs + 0.5149909 * pelod2$pelod2.pup + 0.1381793 * pelod2$pelod2.map - 0.06871416 * pelod2$pelod2.cr + 0.2626874 * pelod2$pelod2.carrico + 0.8777295 * pelod2$pelod2.paco2 + 0.1311851 * pelod2$pelod2.vent + 0.7447805 * pelod2$pelod2.wbc + 0.2743563 * pelod2$pelod2.plate)))
+  return (1 / (1 + exp((-6.76204 + 0.3904402 * pelod2$pelod2.gcs + 0.5149909 * pelod2$pelod2.pup + 0.1381793 * pelod2$pelod2.map - 0.06871416 * pelod2$pelod2.cr + 0.2626874 * pelod2$pelod2.carrico + 0.8777295 * pelod2$pelod2.paco2 + 0.1311851 * pelod2$pelod2.vent + 0.7447805 * pelod2$pelod2.wbc + 0.2743563 * pelod2$pelod2.plate) * -1)))
 }
 
-ProbMortalityNewSubsets <- function(pelod2) {
-  return (1 / (1 + exp(-7.576947 + 0.4513461 * pelod2$pelod2.neuroscores + 0.2738175 * pelod2$pelod2.cardioscores + 0.01417186 * pelod2$pelod2.renalscores + 0.38281 * pelod2$pelod2.respscores + 0.4919619 * pelod2$pelod2.hemascores)))
+ProbMortalityNewSubscores <- function(pelod2) {
+  return (1 / (1 + exp((-7.576947 + 0.4513461 * pelod2$pelod2.neuroscores + 0.2738175 * pelod2$pelod2.cardioscores + 0.01417186 * pelod2$pelod2.renalscores + 0.38281 * pelod2$pelod2.respscores + 0.4919619 * pelod2$pelod2.hemascores) * -1)))
+}
+
+##Hosmer-Lemeshow results on full dataset after downsampling
+#$Table_HLtest
+#total meanpred meanobs predicted observed
+#[0.0178,0.0268)    58    0.025   0.000      1.43        0
+#[0.0268,0.0275)    16    0.027   0.000      0.43        0
+#[0.0275,0.0331)    46    0.032   0.000      1.45        0
+#0.0331             31    0.033   0.000      1.03        0
+#[0.0338,0.0392)    19    0.037   0.000      0.71        0
+#0.0392            270    0.039   0.000     10.58        0
+#0.0397            337    0.040   0.000     13.39        0
+#[0.0406,0.0430)    50    0.042   0.000      2.08        0
+#[0.0430,0.0456)    18    0.044   0.000      0.80        0
+#0.0456             43    0.046   0.000      1.96        0
+#[0.0473,0.0473)     6    0.047   0.167      0.28        1
+#[0.0473,0.0494)    24    0.048   0.000      1.16        0
+#[0.0494,0.0503)   110    0.050   0.000      5.51        0
+#[0.0503,0.0567)    12    0.053   0.000      0.63        0
+#[0.0567,0.0577)    26    0.057   0.000      1.48        0
+#[0.0577,0.0584)    65    0.058   0.000      3.78        0
+#[0.0584,0.0603)  1658    0.060   0.001     99.40        1
+#[0.0603,0.0678)    14    0.064   0.000      0.89        0
+#0.0678             78    0.068   0.000      5.29        0
+#[0.0681,0.0695)    25    0.069   0.000      1.71        0
+#0.0695            417    0.069   0.005     28.97        2
+#[0.0698,0.0724)    18    0.072   0.000      1.29        0
+#[0.0724,0.0759)    18    0.073   0.000      1.32        0
+#[0.0759,0.0801)    28    0.078   0.000      2.19        0
+#[0.0801,0.0849)    17    0.083   0.000      1.41        0
+#[0.0849,0.0872)    38    0.086   0.000      3.29        0
+#[0.0872,0.1034)   268    0.103   0.000     27.59        0
+#[0.1034,0.1079)     8    0.104   0.000      0.83        0
+#[0.1079,0.1171)    41    0.115   0.024      4.72        1
+#[0.1171,0.1234)    10    0.121   0.000      1.21        0
+#[0.1234,0.1752)    32    0.152   0.000      4.87        0
+#[0.1752,0.1882)    14    0.179   0.000      2.51        0
+#[0.1882,0.2090)    24    0.192   0.000      4.62        0
+#[0.2090,0.2200)    82    0.218   0.000     17.87        0
+#[0.2200,0.2382)    21    0.228   0.048      4.79        1
+#[0.2382,0.2544)    18    0.243   0.000      4.37        0
+#[0.2544,0.2670)    55    0.263   0.018     14.49        1
+#[0.2670,0.2934)    26    0.288   0.038      7.48        1
+#[0.2934,0.3060)   275    0.305   0.011     83.81        3
+#0.3060              8    0.306   0.000      2.45        0
+#[0.3071,0.3417)    58    0.332   0.017     19.23        1
+#[0.3417,0.3491)    16    0.346   0.000      5.54        0
+#[0.3491,0.3936)    20    0.371   0.050      7.43        1
+#[0.3936,0.4037)    57    0.403   0.035     22.95        2
+#[0.4037,0.4378)    17    0.422   0.000      7.18        0
+#[0.4378,0.4689)    24    0.452   0.042     10.86        1
+#[0.4689,0.5015)    24    0.490   0.000     11.75        0
+#[0.5015,0.5472)    23    0.522   0.043     12.00        1
+#[0.5472,0.5652)    26    0.555   0.000     14.43        0
+#[0.5652,0.5986)    47    0.591   0.000     27.79        0
+#[0.5986,0.6510)    25    0.618   0.080     15.46        2
+#[0.6510,0.6675)    23    0.652   0.000     15.00        0
+#[0.6675,0.7063)    27    0.684   0.074     18.47        2
+#[0.7063,0.7806)    21    0.734   0.095     15.41        2
+#[0.7806,0.7925)    25    0.789   0.000     19.74        0
+#[0.7925,0.8331)    26    0.816   0.038     21.20        1
+#[0.8331,0.8591)    50    0.852   0.020     42.59        1
+#[0.8591,0.8784)    28    0.872   0.036     24.40        1
+#[0.8784,0.8934)    17    0.888   0.000     15.09        0
+#[0.8934,0.9188)    24    0.903   0.167     21.67        4
+#[0.9188,0.9333)    23    0.927   0.087     21.33        2
+#[0.9333,0.9562)    25    0.944   0.200     23.61        5
+#[0.9562,0.9663)    25    0.961   0.440     24.04       11
+#[0.9663,0.9761)    27    0.972   0.222     26.25        6
+#[0.9761,0.9817)    20    0.979   0.350     19.59        7
+#[0.9817,0.9889)    27    0.985   0.296     26.60        8
+#[0.9889,0.9949)    21    0.992   0.286     20.82        6
+#[0.9949,0.9994)    24    0.998   0.542     23.95       13
+#[0.9994,1.0000]    24    1.000   0.875     23.99       21
+
+#$Chi_square
+#[1] Inf
+
+#$df
+#[1] 210
+
+#$p_value
+#[1] 0
+ProbMortalityDownsample <- function(pelod2) {
+  return (1 / (1 + exp((-2.75234 + 0.5901375 * pelod2$pelod2.gcs + 0.6751759 * pelod2$pelod2.pup + 0.2286607 * pelod2$pelod2.lac + 0.0653454 * pelod2$pelod2.map - 0.223401 * pelod2$pelod2.cr + 0.5362901 * pelod2$pelod2.carrico + 1.081174 * pelod2$pelod2.paco2 - 0.1441723 * pelod2$pelod2.vent + 2.450229 * pelod2$pelod2.wbc - 0.1907878 * pelod2$pelod2.plate) * -1)))
+}
+
+##Hosmer-Lemeshow results of subscores after downsampling
+#$Table_HLtest
+#total meanpred meanobs predicted observed
+#[0.0258,0.0307)    32    0.028   0.031      0.89        1
+#[0.0307,0.0617)    20    0.052   0.000      1.04        0
+#[0.0617,0.0967)    22    0.090   0.136      1.98        3
+#[0.0967,0.3014)    15    0.172   0.200      2.57        3
+#[0.3014,0.4527)    20    0.348   0.400      6.95        8
+#[0.4527,0.7436)    22    0.622   0.500     13.69       11
+#[0.7436,0.9106)    22    0.855   0.818     18.81       18
+#[0.9106,0.9655)    22    0.945   1.000     20.80       22
+#[0.9655,0.9868)    22    0.974   1.000     21.43       22
+#[0.9868,0.9983]    21    0.993   1.000     20.84       21
+
+#$Chi_square
+#[1] 5.675
+
+#$df
+#[1] 8
+
+#$p_value
+#[1] 0.6836
+
+##Hosmer-Lemeshow results on full dataset of subscores after downsampling
+#$Table_HLtest
+#total meanpred meanobs predicted observed
+#0.0258            270    0.026   0.000      6.95        0
+#[0.0279,0.0301)  1656    0.028   0.001     46.93        1
+#0.0301              9    0.030   0.000      0.27        0
+#[0.0307,0.0359)    86    0.033   0.000      2.83        0
+#0.0359             13    0.036   0.000      0.47        0
+#[0.0360,0.0453)    29    0.042   0.000      1.21        0
+#[0.0453,0.0482)   268    0.046   0.000     12.42        0
+#0.0482             32    0.048   0.000      1.54        0
+#[0.0493,0.0521)     3    0.050   0.000      0.15        0
+#[0.0521,0.0529)    46    0.053   0.000      2.42        0
+#0.0529            109    0.053   0.000      5.77        0
+#[0.0532,0.0562)    41    0.054   0.000      2.21        0
+#[0.0562,0.0584)   343    0.058   0.000     19.79        0
+#[0.0584,0.0622)    22    0.061   0.000      1.34        0
+#[0.0622,0.0767)    21    0.069   0.048      1.44        1
+#[0.0767,0.0852)    56    0.083   0.000      4.67        0
+#0.0852             24    0.085   0.000      2.04        0
+#[0.0857,0.0906)    18    0.088   0.000      1.59        0
+#[0.0906,0.0952)   421    0.093   0.005     39.00        2
+#[0.0952,0.0967)    10    0.096   0.000      0.96        0
+#0.0967             55    0.097   0.000      5.32        0
+#[0.0972,0.1034)    17    0.099   0.000      1.68        0
+#[0.1034,0.1060)    35    0.105   0.000      3.67        0
+#[0.1060,0.1105)    33    0.107   0.000      3.53        0
+#[0.1105,0.1152)     8    0.111   0.000      0.89        0
+#[0.1152,0.1388)    23    0.120   0.000      2.76        0
+#[0.1388,0.1567)    24    0.148   0.000      3.56        0
+#[0.1567,0.1693)    74    0.163   0.014     12.04        1
+#[0.1693,0.1754)    22    0.171   0.000      3.77        0
+#[0.1754,0.1854)    67    0.183   0.030     12.29        2
+#[0.1854,0.1916)     9    0.187   0.000      1.68        0
+#[0.1916,0.2148)    21    0.204   0.000      4.29        0
+#[0.2148,0.2726)    28    0.255   0.000      7.13        0
+#0.2726             19    0.273   0.000      5.18        0
+#[0.2730,0.2855)    63    0.279   0.000     17.59        0
+#[0.2855,0.3010)    78    0.299   0.000     23.36        0
+#[0.3010,0.3023)     4    0.301   0.250      1.20        1
+#[0.3023,0.3234)   279    0.321   0.011     89.49        3
+#[0.3234,0.3391)    19    0.333   0.000      6.32        0
+#[0.3391,0.3608)    64    0.357   0.016     22.82        1
+#[0.3608,0.3850)    24    0.375   0.000      9.01        0
+#[0.3850,0.4179)    49    0.407   0.020     19.96        1
+#[0.4179,0.4409)    24    0.430   0.083     10.33        2
+#[0.4409,0.4525)    25    0.449   0.000     11.23        0
+#[0.4525,0.4771)    50    0.473   0.020     23.67        1
+#[0.4771,0.5116)    22    0.487   0.045     10.72        1
+#[0.5116,0.5167)    33    0.515   0.030     16.99        1
+#[0.5167,0.5372)    17    0.534   0.000      9.08        0
+#[0.5372,0.5549)    22    0.543   0.000     11.95        0
+#[0.5549,0.5720)    27    0.566   0.074     15.29        2
+#[0.5720,0.5795)    22    0.576   0.045     12.68        1
+#[0.5795,0.6129)    28    0.602   0.036     16.85        1
+#[0.6129,0.6361)    23    0.630   0.043     14.50        1
+#[0.6361,0.6714)    26    0.658   0.038     17.12        1
+#[0.6714,0.7083)    20    0.693   0.050     13.86        1
+#[0.7083,0.7385)    27    0.724   0.037     19.55        1
+#[0.7385,0.7688)    19    0.748   0.053     14.20        1
+#[0.7688,0.8215)    25    0.794   0.080     19.86        2
+#[0.8215,0.8602)    38    0.853   0.105     32.43        4
+#[0.8602,0.8650)    10    0.864   0.100      8.64        1
+#[0.8650,0.8841)    25    0.877   0.120     21.93        3
+#[0.8841,0.9002)    23    0.891   0.261     20.50        6
+#[0.9002,0.9310)    25    0.915   0.240     22.87        6
+#[0.9310,0.9572)    23    0.945   0.565     21.74       13
+#[0.9572,0.9729)    24    0.965   0.625     23.17       15
+#[0.9729,0.9887)    25    0.981   0.520     24.52       13
+#[0.9887,0.9983]    23    0.993   0.826     22.84       19
+
+#$Chi_square
+#[1] 2179.25
+
+#$df
+#[1] 210
+
+#$p_value
+#[1] 0
+ProbMortalityDownsampleSubscores <- function(pelod2) {
+  return (1 / (1 + exp((-3.534816 + 0.5110541 * pelod2$pelod2.neuroscores + 0.0811069 * pelod2$pelod2.cardioscores - 0.04917815 * pelod2$pelod2.renalscores + 0.2473746 * pelod2$pelod2.respscores + 0.6501 * pelod2$pelod2.hemascores) * -1)))
+}
+
+##Logistic regression with variables selected from all subset selection with glmulti package
+#Coefficients:
+#  (Intercept)    pelod2.gcs    pelod2.pup    pelod2.lac  
+#-6.5677        0.5135        0.5271        0.6153  
+#pelod2.paco2    pelod2.wbc  
+#1.0866        0.8862  
+
+#Degrees of Freedom: 5117 Total (i.e. Null);  5112 Residual
+#Null Deviance:	    1055 
+#Residual Deviance: 494.9 	AIC: 506.9
+
+
+##Hosmer-Lemeshow results on full dataset after variable selection with glmulti
+#$Table_HLtest
+#total meanpred meanobs predicted observed
+#0.00140            2722    0.001   0.000      3.82        1
+#0.00234            1005    0.002   0.002      2.35        2
+#0.00259              23    0.003   0.000      0.06        0
+#[0.00415,0.00691)    33    0.004   0.061      0.14        2
+#0.00691              20    0.007   0.000      0.14        0
+#[0.00765,0.01084)   105    0.008   0.010      0.86        1
+#0.01084             665    0.011   0.015      7.21       10
+#[0.01271,0.01507)    19    0.014   0.053      0.26        1
+#[0.01507,0.01987)    39    0.018   0.000      0.71        0
+#0.01987              21    0.020   0.000      0.42        0
+#[0.02493,0.03171)   129    0.031   0.031      4.02        4
+#0.03171              41    0.032   0.049      1.30        2
+#[0.03499,0.05713)    35    0.055   0.057      1.92        2
+#[0.05713,0.08848)    32    0.060   0.031      1.94        1
+#[0.08848,0.11382)    14    0.104   0.071      1.46        1
+#[0.11382,0.16048)    59    0.129   0.102      7.63        6
+#0.16048              14    0.160   0.000      2.25        0
+#[0.22046,0.26128)    26    0.222   0.231      5.76        6
+#[0.26128,0.34556)    36    0.294   0.389     10.58       14
+#[0.34556,0.47354)    17    0.426   0.471      7.23        8
+#[0.47354,0.69141)    17    0.587   0.647      9.97       11
+#[0.69141,0.88045)    30    0.786   0.733     23.57       22
+#[0.88045,0.99637]    16    0.962   0.938     15.39       15
+
+#$Chi_square
+#[1] 40.7
+
+#$df
+#[1] 210
+
+#$p_value
+#[1] 1
+ProbMortalityGlmulti <- function(pelod2) {
+  return (1 / (1 + exp((-6.567728 + 0.5135225 * pelod2$pelod2.gcs + 0.5270587 * pelod2$pelod2.pup + 0.6153427 * pelod2$pelod2.lac + 1.086556 * pelod2$pelod2.paco2 + 0.8862088 * pelod2$pelod2.wbc) * -1)))
+}
+
+#poor model generated with linear regression
+ProbMortalityGlmulti2 <- function(pelod2) {
+  return (1 / (1 + exp((-0.005095304 + 0.0339569 * pelod2$pelod2.pup + 0.08460044 * pelod2$pelod2.lac + 0.03506476 * pelod2$pelod2.carrico + 0.09284607 * pelod2$pelod2.paco2 + 0.03479897 * pelod2$pelod2.wbc) * -1)))
+}
+
+AllSubsetReg <- function() {
+  return (glmulti(deceased~pelod2.gcs+pelod2.pup+pelod2.lac+pelod2.map+pelod2.cr+pelod2.carrico+pelod2.paco2+pelod2.vent+pelod2.wbc+pelod2.plate, intercept = T, level = 1, data = PELOD2Scores(pelod2.datalist)[, -1], crit = "bic", fitfunction = "glm", family = binomial, confsetsize = 10))
 }
 
 FindValues <- function(id, frame) {
@@ -273,7 +525,7 @@ PELOD2Scores <- function(frame.list) {
 #consider whether to calculate total score by adding neuro, cardio, ... or adding gcs, pup, ...
 #see whether NA values will influence above decision
 #    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup + pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map + pelod2.frame$pelod2.cr + pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent + pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
-    pelod2.frame$pred = ProbMortalityNew(pelod2.frame)
+    #pelod2.frame$pred = ProbMortalityNew(pelod2.frame)
     pelod2.frame$deceased = FindDeceased(read.xlsx("admit1picu_deid_unencrypt.xlsx"))
     return (pelod2.frame)
 }
@@ -490,7 +742,32 @@ for(i in 1:nrow(data))
 #AIC: 506.51
 
 #Number of Fisher Scoring iterations: 9
-###################################################################
+
+
+##Results of logistic regression on selected variables
+#Deviance Residuals: 
+#  Min       1Q   Median       3Q      Max  
+#-2.6357  -0.0721  -0.0530  -0.0530   3.6247  
+
+#Coefficients:
+#  Estimate Std. Error z value Pr(>|z|)    
+#(Intercept)  -6.56773    0.35852 -18.319  < 2e-16 ***
+#  pelod2.gcs    0.51352    0.10660   4.817 1.46e-06 ***
+#  pelod2.pup    0.52706    0.05651   9.327  < 2e-16 ***
+#  pelod2.lac    0.61534    0.09730   6.324 2.54e-10 ***
+#  pelod2.paco2  1.08656    0.14723   7.380 1.58e-13 ***
+#  pelod2.wbc    0.88621    0.15731   5.634 1.76e-08 ***
+#  ---
+#  Signif. codes:  
+#  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#(Dispersion parameter for binomial family taken to be 1)
+
+#Null deviance: 1054.78  on 5117  degrees of freedom
+#Residual deviance:  494.91  on 5112  degrees of freedom
+#AIC: 506.91
+
+#Number of Fisher Scoring iterations: 8
 
 
 ##Distributions of variables (raw values)
@@ -1164,14 +1441,21 @@ for(i in 1:nrow(data))
 #0    1    2 
 #4030  602  486
 
+##Distribution of outcomes
+
+#(0 indicates survival and 1 indicates death)
+#0    1 
+#5009  109 
+
 
 ##To-do:
 #1. Calculate AUROC and Hosmer-Lemeshow calibration of model for PICU data (done)
 #2. Simple imputation of missing data (possibly unnecessary)
 #3. Variable correlation (Spearman or Pearson)
-#4. Try to reduce variables used (calculate AIC and/or BIC of each configuration)
+#4. Try to reduce variables used (calculate AIC and/or BIC of each configuration) (at least partially done with all subsets regression)
 #5. Find new cutoffs with CHAID method and decision trees/random forest
 #6. Try generalized additive models, decision trees, support vector machine, etc.
+#7. Calculate AUPRC of models
 
 
 ##Websites to look at:
@@ -1181,7 +1465,10 @@ for(i in 1:nrow(data))
 #https://www.r-bloggers.com/calculating-auc-the-area-under-a-roc-curve/ 
 #https://www.r-bloggers.com/illustrated-guide-to-roc-and-auc/ 
 #http://thestatsgeek.com/2014/05/05/area-under-the-roc-curve-assessing-discrimination-in-logistic-regression/
-#http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/
+#http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/                                       S
 #http://myrcodes.blogspot.com/2013/12/area-under-curve-auc-proc-package.html 
 #https://rpubs.com/Wangzf/pROC 
 #https://cran.r-project.org/web/packages/pROC/pROC.pdf 
+#https://r-forge.r-project.org/R/?group_id=343 
+#https://rstudio-pubs-static.s3.amazonaws.com/2897_9220b21cfc0c43a396ff9abf122bb351.html
+#https://cran.r-project.org/web/packages/glmulti/glmulti.pdf #https://cran.r-project.org/web/packages/PRROC/PRROC.pdf 
