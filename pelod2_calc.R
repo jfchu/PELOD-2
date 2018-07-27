@@ -451,13 +451,43 @@ ProbMortalityGlmulti <- function(pelod2) {
   return (1 / (1 + exp((-6.567728 + 0.5135225 * pelod2$pelod2.gcs + 0.5270587 * pelod2$pelod2.pup + 0.6153427 * pelod2$pelod2.lac + 1.086556 * pelod2$pelod2.paco2 + 0.8862088 * pelod2$pelod2.wbc) * -1)))
 }
 
+##Logistic regression with subscores selected with all subset regression with glmulti package
+#Deviance Residuals: 
+#  Min       1Q   Median       3Q      Max  
+#-1.9365  -0.0866  -0.0470  -0.0320   3.8929  
+
+#Coefficients:
+#  Estimate Std. Error z value Pr(>|z|)    
+#(Intercept)         -7.57671    0.38920 -19.467  < 2e-16 ***
+#  pelod2.neuroscores   0.45210    0.04613   9.800  < 2e-16 ***
+#  pelod2.cardioscores  0.27501    0.05624   4.890 1.01e-06 ***
+#  pelod2.respscores    0.38367    0.08345   4.598 4.27e-06 ***
+#  pelod2.hemascores    0.49463    0.09209   5.371 7.83e-08 ***
+#  ---
+#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#(Dispersion parameter for binomial family taken to be 1)
+
+#Null deviance: 1054.78  on 5117  degrees of freedom
+#Residual deviance:  502.56  on 5113  degrees of freedom
+#AIC: 512.56
+
+#Number of Fisher Scoring iterations: 8
+ProbMortalityGlmultiSubscores <- function(pelod2) {
+  return (1 / (1 + exp((-7.57671 + 0.452099 * pelod2$pelod2.neuroscores + 0.2750051 * pelod2$pelod2.cardioscores + 0.3836698 * pelod2$pelod2.respscores + 0.4946317 * pelod2$pelod2.hemascores) * -1)))
+}
+
 #poor model generated with linear regression
 ProbMortalityGlmulti2 <- function(pelod2) {
   return (1 / (1 + exp((-0.005095304 + 0.0339569 * pelod2$pelod2.pup + 0.08460044 * pelod2$pelod2.lac + 0.03506476 * pelod2$pelod2.carrico + 0.09284607 * pelod2$pelod2.paco2 + 0.03479897 * pelod2$pelod2.wbc) * -1)))
 }
 
 AllSubsetReg <- function() {
-  return (glmulti(deceased~pelod2.gcs+pelod2.pup+pelod2.lac+pelod2.map+pelod2.cr+pelod2.carrico+pelod2.paco2+pelod2.vent+pelod2.wbc+pelod2.plate, intercept = T, level = 1, data = PELOD2Scores(pelod2.datalist)[, -1], crit = "bic", fitfunction = "glm", family = binomial, confsetsize = 10))
+  return (glmulti(deceased~pelod2.gcs+pelod2.pup+pelod2.lac+pelod2.map+pelod2.cr+pelod2.carrico+pelod2.paco2+pelod2.vent+pelod2.wbc+pelod2.plate, intercept = T, level = 1, data = PELOD2Scores(pelod2.datalist), crit = "bic", fitfunction = "glm", family = binomial, confsetsize = 10))
+}
+
+AllSubsetRegSubscores <- function() {
+  return (glmulti(deceased~pelod2.neuroscores+pelod2.cardioscores+pelod2.renalscores+pelod2.respscores+pelod2.hemascores, intercept = T, level = 1, data = PELOD2Scores(pelod2.datalist), crit = "bic", fitfunction = "glm", confsetsize = 10, family = binomial))
 }
 
 FindValues <- function(id, frame) {
@@ -516,12 +546,12 @@ PELOD2Scores <- function(frame.list) {
     pelod2.frame$pelod2.wbc = sapply(pelod2.frame$pelod2.id, WBC)
     pelod2.frame$pelod2.plate = sapply(pelod2.frame$pelod2.id, Platelet)
     pelod2.frame[is.na(pelod2.frame)] <- 0
-#    pelod2.frame$pelod2.neuroscores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup
-#    pelod2.frame$pelod2.cardioscores = pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map
-#    pelod2.frame$pelod2.renalscores = pelod2.frame$pelod2.cr
-#    pelod2.frame$pelod2.respscores = pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent
-#    pelod2.frame$pelod2.hemascores = pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
-#    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.neuroscores + pelod2.frame$pelod2.cardioscores + pelod2.frame$pelod2.renalscores + pelod2.frame$pelod2.respscores + pelod2.frame$pelod2.hemascores
+    pelod2.frame$pelod2.neuroscores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup
+    pelod2.frame$pelod2.cardioscores = pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map
+    pelod2.frame$pelod2.renalscores = pelod2.frame$pelod2.cr
+    pelod2.frame$pelod2.respscores = pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent
+    pelod2.frame$pelod2.hemascores = pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
+    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.neuroscores + pelod2.frame$pelod2.cardioscores + pelod2.frame$pelod2.renalscores + pelod2.frame$pelod2.respscores + pelod2.frame$pelod2.hemascores
 #consider whether to calculate total score by adding neuro, cardio, ... or adding gcs, pup, ...
 #see whether NA values will influence above decision
 #    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup + pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map + pelod2.frame$pelod2.cr + pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent + pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
@@ -1465,10 +1495,12 @@ for(i in 1:nrow(data))
 #https://www.r-bloggers.com/calculating-auc-the-area-under-a-roc-curve/ 
 #https://www.r-bloggers.com/illustrated-guide-to-roc-and-auc/ 
 #http://thestatsgeek.com/2014/05/05/area-under-the-roc-curve-assessing-discrimination-in-logistic-regression/
-#http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/                                       S
+#http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/   
 #http://myrcodes.blogspot.com/2013/12/area-under-curve-auc-proc-package.html 
 #https://rpubs.com/Wangzf/pROC 
 #https://cran.r-project.org/web/packages/pROC/pROC.pdf 
 #https://r-forge.r-project.org/R/?group_id=343 
 #https://rstudio-pubs-static.s3.amazonaws.com/2897_9220b21cfc0c43a396ff9abf122bb351.html
-#https://cran.r-project.org/web/packages/glmulti/glmulti.pdf #https://cran.r-project.org/web/packages/PRROC/PRROC.pdf 
+#https://cran.r-project.org/web/packages/glmulti/glmulti.pdf 
+#https://cran.r-project.org/web/packages/PRROC/PRROC.pdf 
+#http://www.metafor-project.org/doku.php/tips:model_selection_with_glmulti
