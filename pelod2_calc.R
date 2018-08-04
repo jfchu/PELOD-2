@@ -196,8 +196,8 @@ Platelet <- function(id) {
   return (max(sapply(seq_len(length(cutoffs)), FindCutoffs, plate.count = min.val)))
 }
 
-ProbMortality <- function(pelod2) {
-  return (1 / (1 + exp(6.61 - 0.47 * pelod2)))
+ProbMortality <- function(pelod2.scores) {
+  return (1 / (1 + exp(6.61 - 0.47 * pelod2.scores)))
 }
 
 #Check whether negative sign was added correctly
@@ -205,8 +205,31 @@ ProbMortalityNew <- function(pelod2) {
   return (1 / (1 + exp((-6.76204 + 0.3904402 * pelod2$pelod2.gcs + 0.5149909 * pelod2$pelod2.pup + 0.1381793 * pelod2$pelod2.map - 0.06871416 * pelod2$pelod2.cr + 0.2626874 * pelod2$pelod2.carrico + 0.8777295 * pelod2$pelod2.paco2 + 0.1311851 * pelod2$pelod2.vent + 0.7447805 * pelod2$pelod2.wbc + 0.2743563 * pelod2$pelod2.plate) * -1)))
 }
 
+##Logistic regression results on all subscores with full data
+#Deviance Residuals: 
+#  Min       1Q   Median       3Q      Max  
+#-1.9376  -0.0873  -0.0469  -0.0320   3.8929  
+
+#Coefficients:
+#  Estimate Std. Error z value Pr(>|z|)    
+#(Intercept)  -7.57695    0.38917 -19.469  < 2e-16 ***
+#  neuroscores   0.45135    0.04675   9.653  < 2e-16 ***
+#  cardioscores  0.27382    0.05749   4.763 1.91e-06 ***
+#  renalscores   0.01417    0.14363   0.099    0.921    
+#respscores    0.38281    0.08386   4.565 5.00e-06 ***
+#  hemascores    0.49196    0.09600   5.125 2.98e-07 ***
+#  ---
+#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#(Dispersion parameter for binomial family taken to be 1)
+
+#Null deviance: 1054.78  on 5117  degrees of freedom
+#Residual deviance:  502.55  on 5112  degrees of freedom
+#AIC: 514.55
+
+#Number of Fisher Scoring iterations: 8
 ProbMortalityNewSubscores <- function(pelod2) {
-  return (1 / (1 + exp((-7.576947 + 0.4513461 * pelod2$pelod2.neuroscores + 0.2738175 * pelod2$pelod2.cardioscores + 0.01417186 * pelod2$pelod2.renalscores + 0.38281 * pelod2$pelod2.respscores + 0.4919619 * pelod2$pelod2.hemascores) * -1)))
+  return (1 / (1 + exp((-7.576947 + 0.4513461 * pelod2$neuroscores + 0.2738175 * pelod2$cardioscores + 0.01417186 * pelod2$renalscores + 0.38281 * pelod2$respscores + 0.4919619 * pelod2$hemascores) * -1)))
 }
 
 ##Hosmer-Lemeshow results on full dataset after downsampling
@@ -397,7 +420,7 @@ ProbMortalityDownsample <- function(pelod2) {
 #$p_value
 #[1] 0
 ProbMortalityDownsampleSubscores <- function(pelod2) {
-  return (1 / (1 + exp((-3.534816 + 0.5110541 * pelod2$pelod2.neuroscores + 0.0811069 * pelod2$pelod2.cardioscores - 0.04917815 * pelod2$pelod2.renalscores + 0.2473746 * pelod2$pelod2.respscores + 0.6501 * pelod2$pelod2.hemascores) * -1)))
+  return (1 / (1 + exp((-3.534816 + 0.5110541 * pelod2$neuroscores + 0.0811069 * pelod2$cardioscores - 0.04917815 * pelod2$renalscores + 0.2473746 * pelod2$respscores + 0.6501 * pelod2$hemascores) * -1)))
 }
 
 ##Logistic regression with variables selected from all subset selection with glmulti package
@@ -447,6 +470,61 @@ ProbMortalityDownsampleSubscores <- function(pelod2) {
 
 #$p_value
 #[1] 1
+
+##Cross validation results for all subsets regression on individual scores
+##Results for 2558 rows
+#Confusion Matrix and Statistics
+
+#Reference
+#Prediction    0    1
+#0 2498   30
+#1    6   24
+
+#Accuracy : 0.9859          
+#95% CI : (0.9806, 0.9901)
+#No Information Rate : 0.9789          
+#P-Value [Acc > NIR] : 0.0056725       
+
+#Kappa : 0.5649          
+#Mcnemar's Test P-Value : 0.0001264       
+
+#Sensitivity : 0.9976          
+#Specificity : 0.4444          
+#Pos Pred Value : 0.9881          
+#Neg Pred Value : 0.8000          
+#Prevalence : 0.9789          
+#Detection Rate : 0.9765          
+#Detection Prevalence : 0.9883          
+#Balanced Accuracy : 0.7210          
+
+#'Positive' Class : 0
+
+##Results for 2560 rows
+#Confusion Matrix and Statistics
+
+#Reference
+#Prediction    0    1
+#0 2499   33
+#1    6   22
+
+#Accuracy : 0.9848          
+#95% CI : (0.9792, 0.9891)
+#No Information Rate : 0.9785          
+#P-Value [Acc > NIR] : 0.01389         
+
+#Kappa : 0.5232          
+#Mcnemar's Test P-Value : 3.136e-05       
+
+#Sensitivity : 0.9976          
+#Specificity : 0.4000          
+#Pos Pred Value : 0.9870          
+#Neg Pred Value : 0.7857          
+#Prevalence : 0.9785          
+#Detection Rate : 0.9762          
+#Detection Prevalence : 0.9891          
+#Balanced Accuracy : 0.6988          
+
+#'Positive' Class : 0
 ProbMortalityGlmulti <- function(pelod2) {
   return (1 / (1 + exp((-6.567728 + 0.5135225 * pelod2$pelod2.gcs + 0.5270587 * pelod2$pelod2.pup + 0.6153427 * pelod2$pelod2.lac + 1.086556 * pelod2$pelod2.paco2 + 0.8862088 * pelod2$pelod2.wbc) * -1)))
 }
@@ -459,10 +537,10 @@ ProbMortalityGlmulti <- function(pelod2) {
 #Coefficients:
 #  Estimate Std. Error z value Pr(>|z|)    
 #(Intercept)         -7.57671    0.38920 -19.467  < 2e-16 ***
-#  pelod2.neuroscores   0.45210    0.04613   9.800  < 2e-16 ***
-#  pelod2.cardioscores  0.27501    0.05624   4.890 1.01e-06 ***
-#  pelod2.respscores    0.38367    0.08345   4.598 4.27e-06 ***
-#  pelod2.hemascores    0.49463    0.09209   5.371 7.83e-08 ***
+#  neuroscores   0.45210    0.04613   9.800  < 2e-16 ***
+#  cardioscores  0.27501    0.05624   4.890 1.01e-06 ***
+#  respscores    0.38367    0.08345   4.598 4.27e-06 ***
+#  hemascores    0.49463    0.09209   5.371 7.83e-08 ***
 #  ---
 #  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
@@ -473,8 +551,82 @@ ProbMortalityGlmulti <- function(pelod2) {
 #AIC: 512.56
 
 #Number of Fisher Scoring iterations: 8
+
+
+##Hosmer-Lemeshow results after all subset regression with glmulti on subscores
+#$Table_HLtest
+#total meanpred meanobs predicted observed
+#0.000512             1925    0.001   0.001      0.99        1
+#0.000674                8    0.001   0.000      0.01        0
+#[0.000751,0.000839)   285    0.001   0.000      0.23        0
+#0.000839              141    0.001   0.000      0.12        0
+#0.000887               87    0.001   0.000      0.08        0
+#[0.001059,0.001231)    24    0.001   0.000      0.03        0
+#[0.001231,0.001376)    35    0.001   0.000      0.05        0
+#0.001376               72    0.001   0.000      0.10        0
+#0.001393               38    0.001   0.000      0.05        0
+#0.001454               19    0.001   0.000      0.03        0
+#0.001617              380    0.002   0.000      0.61        0
+#[0.001713,0.001810)     4    0.002   0.000      0.01        0
+#[0.001810,0.002254)    31    0.002   0.000      0.06        0
+#[0.002254,0.002371)    19    0.002   0.000      0.04        0
+#[0.002371,0.002649)   470    0.003   0.006      1.19        3
+#0.002649               40    0.003   0.000      0.11        0
+#[0.002660,0.003115)    21    0.003   0.000      0.06        0
+#0.003115               55    0.003   0.036      0.17        2
+#[0.003134,0.003691)    16    0.003   0.000      0.05        0
+#0.003691               58    0.004   0.000      0.21        0
+#[0.003721,0.004112)    14    0.004   0.000      0.05        0
+#[0.004112,0.004174)    72    0.004   0.000      0.30        0
+#0.004174                3    0.004   0.000      0.01        0
+#[0.004336,0.004582)    42    0.004   0.000      0.18        0
+#0.004582                5    0.005   0.000      0.02        0
+#[0.004854,0.004916)    25    0.005   0.000      0.12        0
+#[0.004916,0.005788)    26    0.005   0.077      0.14        2
+#[0.005788,0.007091)    34    0.007   0.000      0.23        0
+#[0.007091,0.007492)    13    0.007   0.000      0.09        0
+#[0.007492,0.009783)    23    0.008   0.043      0.19        1
+#0.009783              342    0.010   0.009      3.35        3
+#[0.009840,0.012355)    22    0.011   0.045      0.25        1
+#[0.012355,0.015289)    22    0.014   0.000      0.30        0
+#[0.015289,0.016835)    66    0.016   0.015      1.05        1
+#0.016835               67    0.017   0.015      1.13        1
+#[0.017091,0.019083)    11    0.018   0.091      0.20        1
+#[0.019083,0.022358)    25    0.021   0.000      0.54        0
+#[0.022358,0.024516)    35    0.024   0.029      0.83        1
+#0.024516               40    0.025   0.000      0.98        0
+#0.025881               28    0.026   0.036      0.72        1
+#0.027314               28    0.027   0.036      0.76        1
+#[0.028824,0.030916)    13    0.030   0.154      0.39        2
+#[0.030916,0.035652)    26    0.034   0.038      0.88        1
+#[0.035652,0.039582)    24    0.036   0.000      0.87        0
+#[0.039582,0.044818)    34    0.042   0.059      1.42        2
+#[0.044818,0.051466)    20    0.050   0.000      0.99        0
+#[0.051466,0.057161)    17    0.053   0.000      0.90        0
+#[0.057161,0.066671)    25    0.062   0.000      1.54        0
+#[0.066671,0.077798)    23    0.068   0.043      1.57        1
+#[0.077798,0.090241)    41    0.084   0.073      3.46        3
+#[0.090241,0.099775)     8    0.092   0.000      0.74        0
+#[0.099775,0.122052)    27    0.109   0.037      2.95        1
+#[0.122052,0.154073)    26    0.139   0.000      3.62        0
+#[0.154073,0.185653)    21    0.169   0.190      3.54        4
+#[0.185653,0.239561)    23    0.210   0.217      4.83        5
+#[0.239561,0.342203)    24    0.289   0.333      6.94        8
+#[0.342203,0.460368)    23    0.392   0.435      9.02       10
+#[0.460368,0.607608)    24    0.521   0.667     12.51       16
+#[0.607608,0.779419)    24    0.676   0.708     16.23       17
+#[0.779419,0.986482]    24    0.873   0.833     20.96       20
+
+#$Chi_square
+#[1] 84.925
+
+#$df
+#[1] 210
+
+#$p_value
+#[1] 1
 ProbMortalityGlmultiSubscores <- function(pelod2) {
-  return (1 / (1 + exp((-7.57671 + 0.452099 * pelod2$pelod2.neuroscores + 0.2750051 * pelod2$pelod2.cardioscores + 0.3836698 * pelod2$pelod2.respscores + 0.4946317 * pelod2$pelod2.hemascores) * -1)))
+  return (1 / (1 + exp((-7.57671 + 0.452099 * pelod2$neuroscores + 0.2750051 * pelod2$cardioscores + 0.3836698 * pelod2$respscores + 0.4946317 * pelod2$hemascores) * -1)))
 }
 
 #poor model generated with linear regression
@@ -487,7 +639,7 @@ AllSubsetReg <- function() {
 }
 
 AllSubsetRegSubscores <- function() {
-  return (glmulti(deceased~pelod2.neuroscores+pelod2.cardioscores+pelod2.renalscores+pelod2.respscores+pelod2.hemascores, intercept = T, level = 1, data = PELOD2Scores(pelod2.datalist), crit = "bic", fitfunction = "glm", confsetsize = 10, family = binomial))
+  return (glmulti(deceased~neuroscores+cardioscores+renalscores+respscores+hemascores, intercept = T, level = 1, data = PELOD2Scores(pelod2.datalist), crit = "bic", fitfunction = "glm", confsetsize = 10, family = binomial))
 }
 
 FindValues <- function(id, frame) {
@@ -546,12 +698,12 @@ PELOD2Scores <- function(frame.list) {
     pelod2.frame$pelod2.wbc = sapply(pelod2.frame$pelod2.id, WBC)
     pelod2.frame$pelod2.plate = sapply(pelod2.frame$pelod2.id, Platelet)
     pelod2.frame[is.na(pelod2.frame)] <- 0
-    pelod2.frame$pelod2.neuroscores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup
-    pelod2.frame$pelod2.cardioscores = pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map
-    pelod2.frame$pelod2.renalscores = pelod2.frame$pelod2.cr
-    pelod2.frame$pelod2.respscores = pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent
-    pelod2.frame$pelod2.hemascores = pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
-    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.neuroscores + pelod2.frame$pelod2.cardioscores + pelod2.frame$pelod2.renalscores + pelod2.frame$pelod2.respscores + pelod2.frame$pelod2.hemascores
+    pelod2.frame$neuroscores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup
+    pelod2.frame$cardioscores = pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map
+    pelod2.frame$renalscores = pelod2.frame$pelod2.cr
+    pelod2.frame$respscores = pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent
+    pelod2.frame$hemascores = pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
+    pelod2.frame$pelod2.scores = pelod2.frame$neuroscores + pelod2.frame$cardioscores + pelod2.frame$renalscores + pelod2.frame$respscores + pelod2.frame$hemascores
 #consider whether to calculate total score by adding neuro, cardio, ... or adding gcs, pup, ...
 #see whether NA values will influence above decision
 #    pelod2.frame$pelod2.scores = pelod2.frame$pelod2.gcs + pelod2.frame$pelod2.pup + pelod2.frame$pelod2.lac + pelod2.frame$pelod2.map + pelod2.frame$pelod2.cr + pelod2.frame$pelod2.carrico + pelod2.frame$pelod2.paco2 + pelod2.frame$pelod2.vent + pelod2.frame$pelod2.wbc + pelod2.frame$pelod2.plate
@@ -669,7 +821,7 @@ pelod2.raw <- data.frame(
 pelod2.raw[is.na(pelod2.raw)] <- 0
 
 #LOOCV code borrowed from https://www.r-bloggers.com/predicting-creditability-using-logistic-regression-in-r-cross-validating-the-classifier-part-2-2/
-LOOCV <- function(data) {
+LOOCV <- function(data, cv.model) {
 acc <- NULL
 for(i in 1:nrow(data))
 {
@@ -679,11 +831,8 @@ for(i in 1:nrow(data))
   train <- data[-i,]
   test <- data[i,]
   
-  # Fitting
-  model2 <- glm(deceased~.,family=binomial,data=train)
-  
   # Predict results
-  results_prob <- predict(model2,subset(test,select=c(2:9)),type='response')
+  results_prob <- predict(cv.model,subset(test,select=c(2:9)),type='response')
   
   # If prob > 0.5 then 1, else 0
   results <- ifelse(results_prob > 0.5,1,0)
@@ -704,6 +853,28 @@ for(i in 1:nrow(data))
   # Histogram of the model accuracy
   hist(acc,xlab='Accuracy',ylab='Freq',main='Accuracy LOOCV',
      col='cyan',border='blue',density=30)
+}
+
+LOOCV2 <- function(df) {
+  for (k in 1:n_train) {
+    train.data <- df[-k, ]
+    test.data <- df[k, ]
+    x <- train.data$x
+    y <- train.data$y
+    fitted_models <- apply(t(df), 2, function(degf) lm(y ~ ns(x, df = degf)))
+    pred <- mapply(function(obj, degf) predict(obj, data.frame(x = test_xy$x)), fitted_models, df)
+    loocv_tmp[k, ] <- (test_xy$y - pred)^2
+  }
+  loocv <- colMeans(loocv_tmp)
+  
+  plot(df, mse, type = "l", lwd = 2, col = gray(.4), ylab = "Prediction error",
+       xlab = "Flexibilty (spline's degrees of freedom [log scaled])",
+       main = "Leave-One-Out Cross-Validation", ylim = c(.1, .8), log = "x")
+  lines(df, cv, lwd = 2, col = "steelblue2", lty = 2)
+  lines(df, loocv, lwd = 2, col = "darkorange")
+  legend(x = "topright", legend = c("Training error", "10-fold CV error", "LOOCV error"),
+         lty = c(1, 2, 1), lwd = rep(2, 3), col = c(gray(.4), "steelblue2", "darkorange"),
+         text.width = .3, cex = .85)
 }
 
 ##Results of Hosmer-Lemeshow GOF test (original model)
@@ -1501,6 +1672,8 @@ for(i in 1:nrow(data))
 #https://cran.r-project.org/web/packages/pROC/pROC.pdf 
 #https://r-forge.r-project.org/R/?group_id=343 
 #https://rstudio-pubs-static.s3.amazonaws.com/2897_9220b21cfc0c43a396ff9abf122bb351.html
-#https://cran.r-project.org/web/packages/glmulti/glmulti.pdf 
+#https://cran.r-project.org/web/packages/glmulti/glmulti.pdf
 #https://cran.r-project.org/web/packages/PRROC/PRROC.pdf 
 #http://www.metafor-project.org/doku.php/tips:model_selection_with_glmulti
+#http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf 
+#http://www.milanor.net/blog/cross-validation-for-predictive-analytics-using-r/ 
