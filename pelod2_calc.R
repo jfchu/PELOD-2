@@ -16,7 +16,6 @@ FindAgeCutoffs <- function(X, age) {
 
 #Glasgow Coma Score
 #True
-#Fix score calculation; eg. encid 7 has incorrect score
 GComa <- function(id) {
   cutoffs <- list(c(4, 4), c(10, 1))
   min.val <- FindExtremeValueMin(id, pelod2.datalist[["GCS"]])
@@ -47,7 +46,6 @@ Pupillary <- function(id) {
 #Molarity measured in mmol/L
 #False
 #lac.wholeblood contains data with ">" character 
-#!is.numeric(unlist(FindValues(id, pelod2.datalist[["lac.wholeblood"]]), recursive = F))
 Lactatemia <- function(id) {
   cutoffs <- list(c(11.0, 4), c(5.0, 1))
   max.val1 <- FindExtremeValueMax(id, pelod2.datalist[["lac"]])
@@ -93,7 +91,6 @@ MAP <- function(id, age) {
 #False
 #Conversion factor from raw data to units used in score calculation is 88.44
 #cr contains data with "<" character
-#max never selects the specific non-numeric data in this sheet but a workaround would be ideal
 Creatinine <- function(id, age) {
   cutoffs <- list(list(c(93, 2)), list(c(59, 2)), list(c(51, 2)), list(c(35, 2)), list(c(23, 2)), list(c(70, 2)))
   max.val <- FindExtremeValueMax(id, pelod2.datalist[["cr"]]) * 88.44
@@ -200,7 +197,6 @@ ProbMortality <- function(pelod2.scores) {
   return (1 / (1 + exp(6.61 - 0.47 * pelod2.scores)))
 }
 
-#Check whether negative sign was added correctly
 ProbMortalityNew <- function(pelod2) {
   return (1 / (1 + exp((-6.76204 + 0.3904402 * pelod2$pelod2.gcs + 0.5149909 * pelod2$pelod2.pup + 0.1381793 * pelod2$pelod2.map - 0.06871416 * pelod2$pelod2.cr + 0.2626874 * pelod2$pelod2.carrico + 0.8777295 * pelod2$pelod2.paco2 + 0.1311851 * pelod2$pelod2.vent + 0.7447805 * pelod2$pelod2.wbc + 0.2743563 * pelod2$pelod2.plate) * -1)))
 }
@@ -680,7 +676,53 @@ FindExtremeValuePupil <- function(id, frame) {
 FindExtremeValueVent <- function(id, frame) {
   vals <- frame[which(frame$encid == id), "Clinical.Event.Result"]
   FilterCharacter <- function(X) {if (is.character(X)) return (1) else return (0)}
-  return (max(unlist(sapply(vals, FilterCharacter), recursive = F)))
+  if (all(is.na(sapply(vals, FilterCharacter))))
+    return (NA)
+  else
+    return (max(unlist(sapply(vals, FilterCharacter), recursive = F)))
+}
+
+FindDateVals <- function(id, date, frame) {
+  start.time <- frame[min(which(frame$encid == id)), "Clinical.Event.Performed.Date/Time"]
+  vals <- frame[which(frame$encid == id), ]
+  vals <- vals[, "Clinical.Event.Result"][which(vals$"Clinical.Event.Performed.Date/Time" >= start.time + date - 1 & vals$"Clinical.Event.Performed.Date/Time" <= start.time + date)]
+  return (vals)
+}
+
+FindExtremeValueMaxDate <- function(id, date, frame) {
+  vals <- FindDateVals(id, date, frame)
+  vals <- as.numeric(vals)
+  if (all(is.na(vals)))
+    return (NA)
+  else
+    return (max(vals, na.rm = T))
+}
+
+FindExtremeValueMinDate <- function(id, date, frame) {
+  vals <- FindDateVals(id, date, frame)
+  vals <- as.numeric(vals)
+  if (all(is.na(vals)))
+    return (NA)
+  else
+    return (min(vals, na.rm = T))
+}
+
+FindExtremeValuePupDate <- function(id, date, frame) {
+  vals <- FindDateVals(id, date, frame) 
+  FilterNonreactive <- function(X) {if (X == "Nonreactive") return (0) else if (X == "Unable to assess") return (NA) else return (1)}
+  if (all(is.na(sapply(vals, FilterNonreactive))))
+    return (NA)
+  else
+    return (min(unlist(sapply(vals, FilterNonreactive), recursive = F), na.rm = T))
+}
+
+FindExtremeValueVentDate <- function(id, date, frame) {
+  vals <- FindDateVals(id, date, frame)
+  FilterCharacter <- function(X) {if (is.character(X)) return (1) else return (0)}
+  if (all(is.na(sapply(vals, FilterCharacter))))
+    return (NA)
+  else
+    return (max(unlist(sapply(vals, FilterCharacter), recursive = F)))
 }
 
 PELOD2Scores <- function(frame.list) {
